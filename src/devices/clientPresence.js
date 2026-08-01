@@ -22,6 +22,7 @@ export const clientPresenceBlueprint = {
       selector: deviceSelector,
       external_id: ids.device,
       model: client.is_guest ? 'Guest Device' : 'Network Client',
+      poll_frequency: 60000,
       features: [
         {
           name: 'Presence',

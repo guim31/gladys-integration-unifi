@@ -76,6 +76,7 @@ export const gatewayBlueprint = {
       selector: deviceSelector,
       external_id: ids.device,
       model: unifiDevice.model || 'UniFi Hardware',
+      poll_frequency: 60000,
       features,
     };
   },

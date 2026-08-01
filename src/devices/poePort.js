@@ -25,6 +25,7 @@ export const poePortBlueprint = {
       selector: deviceSelector,
       external_id: ids.device,
       model: 'PoE Switch Port',
+      poll_frequency: 60000,
       features: [
         {
           name: 'PoE Power',

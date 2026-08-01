@@ -21,6 +21,7 @@ export const wifiNetworkBlueprint = {
       selector: deviceSelector,
       external_id: ids.device,
       model: 'Wi-Fi Network (SSID)',
+      poll_frequency: 60000,
       features: [
         {
           name: 'Wi-Fi State',
