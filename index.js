@@ -126,10 +126,10 @@ gladys.onSetValue(async (device, feature, value) => {
     (extId.includes(':client-internet:') && extId.endsWith(':access')) ||
     (extId.includes(':client:') && extId.endsWith(':block'))
   ) {
-    const parts = extId.split(':');
     const isAccess = extId.endsWith(':access');
-    const macIndex = parts.indexOf(isAccess ? 'client-internet' : 'client') + 1;
-    const mac = parts[macIndex];
+    const tag = isAccess ? ':client-internet:' : ':client:';
+    const suffix = isAccess ? ':access' : ':block';
+    const mac = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
 
     try {
       if (isAccess) {
@@ -168,8 +168,9 @@ gladys.onSetValue(async (device, feature, value) => {
 
   // 2. Wi-Fi SSID Switch (unifi:wifi:<wlanId>:state)
   if (extId.includes(':wifi:') && extId.endsWith(':state')) {
-    const parts = extId.split(':');
-    const wlanId = parts[parts.indexOf('wifi') + 1];
+    const tag = ':wifi:';
+    const suffix = ':state';
+    const wlanId = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
     try {
       logger.info(
         `[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`,
@@ -189,9 +190,12 @@ gladys.onSetValue(async (device, feature, value) => {
 
   // 3. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
   if (extId.includes(':poe:') && extId.endsWith(':power')) {
-    const parts = extId.split(':');
-    const deviceMac = parts[parts.indexOf('poe') + 1];
-    const portIdx = parseInt(parts[parts.indexOf('poe') + 2], 10);
+    const tag = ':poe:';
+    const suffix = ':power';
+    const middle = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
+    const lastColon = middle.lastIndexOf(':');
+    const deviceMac = middle.slice(0, lastColon);
+    const portIdx = parseInt(middle.slice(lastColon + 1), 10);
     const mode = value === 1 ? 'auto' : 'off';
     try {
       logger.info(`[UniFi Action] Setting PoE port ${portIdx} on switch ${deviceMac} = ${mode}`);
