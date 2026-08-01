@@ -1,101 +1,117 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "UniFi Network",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Ubiquiti UniFi integration for UCG Fiber, UDM, Switches, Access Points and network presence tracking.",
+    "fr": "Intégration Ubiquiti UniFi pour UCG Fiber, UDM, Switches, Points d'accès et détection de présence."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
-  "gladys_version": ">=4.62.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "transports": ["local", "cloud"],
+  "docker_image": "ghcr.io/guim3/gladys-integration-unifi:1.0.0",
+  "gladys_version": ">=4.84.0",
+  "cover_image": "https://raw.githubusercontent.com/guim3/gladys-integration-unifi/main/cover.png",
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": { "en": "UniFi OS Connection", "fr": "Connexion UniFi OS" },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Enter the local IP address of your UniFi Cloud Gateway (UCG Fiber, UDM, Cloud Key) and authentication method.",
+        "fr": "Entrez l'adresse IP locale de votre Gateway UniFi (UCG Fiber, UDM, Cloud Key) et le mode d'authentification."
+      }
+    },
+    {
+      "key": "unifi_host",
+      "type": "text",
+      "label": { "en": "IP Address / Hostname", "fr": "Adresse IP / Hôte" },
+      "description": {
+        "en": "IP address of your UniFi OS console (e.g. 192.168.1.1).",
+        "fr": "Adresse IP de votre console UniFi OS (ex: 192.168.1.1)."
       },
-      "links": [
+      "required": true,
+      "default": "192.168.1.1"
+    },
+    {
+      "key": "unifi_port",
+      "type": "number",
+      "label": { "en": "Port", "fr": "Port" },
+      "required": true,
+      "default": 443,
+      "min": 1,
+      "max": 65535
+    },
+    {
+      "key": "unifi_auth_type",
+      "type": "select",
+      "label": { "en": "Authentication Method", "fr": "Mode d'authentification" },
+      "required": true,
+      "default": "api_key",
+      "options": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "value": "api_key",
+          "label": {
+            "en": "Local API Key (UniFi OS 3.2+ - Recommended)",
+            "fr": "Clé API Locale (UniFi OS 3.2+ - Recommandé)"
+          }
+        },
+        {
+          "value": "credentials",
+          "label": {
+            "en": "Local Username & Password",
+            "fr": "Nom d'utilisateur & Mot de passe local"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
+      "key": "unifi_api_key",
+      "type": "password",
+      "label": { "en": "Local API Key", "fr": "Clé API Locale" },
       "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+        "en": "API Key generated in UniFi OS > Control Plane > System > API Keys.",
+        "fr": "Clé API générée dans UniFi OS > Control Plane > Système > Clés API."
       },
+      "required": false
+    },
+    {
+      "key": "unifi_username",
+      "type": "text",
+      "label": { "en": "Local Username", "fr": "Nom d'utilisateur local" },
+      "required": false
+    },
+    {
+      "key": "unifi_password",
+      "type": "password",
+      "label": { "en": "Local Password", "fr": "Mot de passe local" },
+      "required": false
+    },
+    {
+      "key": "unifi_site_id",
+      "type": "text",
+      "label": { "en": "Site ID", "fr": "ID du Site" },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": "default"
     },
     {
-      "key": "longitude",
+      "key": "presence_offline_delay",
       "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
+      "label": { "en": "Presence Offline Delay (s)", "fr": "Délai de déconnexion présence (s)" },
       "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
-      },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds.",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes."
+        "en": "Inactivity delay before marking a device as absent (prevents deep sleep toggling).",
+        "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les fauts positifs en veille)."
       },
       "required": false,
-      "default": 300,
-      "min": 30,
+      "default": 120,
+      "min": 0,
       "max": 3600
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": { "en": "Test UniFi Connection", "fr": "Tester la connexion UniFi" },
       "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
     }
   ]
 }

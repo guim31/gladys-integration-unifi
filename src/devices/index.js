@@ -1,90 +1,93 @@
 // -----------------------------------------------------------------------------
-// Device registry.
-//
-// Add or remove device types here. Each device lives in its own file and
-// exposes the same shape:
-//   - key                        : short identifier (used in logs)
-//   - deviceExternalId(gladys)   : the device external_id (for dispatch)
-//   - buildDevice(gladys, config): the discovery payload sent to Gladys
-//   - onPoll(gladys, config)      (optional): periodic read
-//   - onSetValue(gladys, {...})   (optional): run a user command
-//   - onGetImage(gladys, {...})   (optional): fresh camera capture, resolved
-//     as an `image/jpg;base64,...` string (cameras only)
-//   - startPush(gladys, config)   (optional): subscribe to a real-time stream
-//   - transport(gladys, config)   (optional): effective transport of the
-//     device, shown as a badge in Gladys. Either a plain string ('local' |
-//     'cloud' | 'unreachable') or an object `{ transport, degraded, message }`
-//     to also flag the "works, but not nominal" state (orange dot + tooltip)
-//   - identify(gladys, {...})     (optional): make the physical device signal
-//     itself (blink...), used by the `identify` manifest action
-//   - actions                     (optional): manifest action handlers, keyed
-//     by the action `key` declared in gladys-assistant-integration.json
+// UniFi Device Registry & Discovery Engine
 // -----------------------------------------------------------------------------
 
-import { weatherStation } from './weatherStation.js';
-import { switchDevice } from './switchDevice.js';
-import { light } from './light.js';
-import { plug } from './plug.js';
-import { motionSensor } from './motionSensor.js';
-import { camera } from './camera.js';
+import { logger } from '@gladysassistant/integration-sdk';
+import { gatewayBlueprint } from './gateway.js';
+import { clientPresenceBlueprint } from './clientPresence.js';
+import { poePortBlueprint } from './poePort.js';
+import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
-export const DEVICE_BLUEPRINTS = [weatherStation, switchDevice, light, plug, motionSensor, camera];
+export const DEVICE_BLUEPRINTS = [
+  gatewayBlueprint,
+  clientPresenceBlueprint,
+  poePortBlueprint,
+  wifiNetworkBlueprint,
+];
 
 /**
- * Build the discovery payload for Gladys (all devices).
+ * Perform dynamic scan of all UniFi infrastructure devices, clients, PoE ports, and WLANs.
  */
-export function buildDiscoveredDevices(gladys, config) {
-  return DEVICE_BLUEPRINTS.map((bp) => bp.buildDevice(gladys, config));
+export async function buildDiscoveredDevices(gladys, config, unifiClient) {
+  if (!unifiClient) {
+    logger.warn('UniFi client not connected, skipping device discovery.');
+    return [];
+  }
+
+  const discovered = [];
+
+  try {
+    // 1. Gateways, Switches & Access Points
+    const devices = await unifiClient.getDevices();
+    for (const dev of devices) {
+      // Is Gateway (UCG, UDM, USG)
+      if (dev.type === 'ugw' || dev.type === 'udm' || (dev.model && dev.model.includes('UCG'))) {
+        discovered.push(gatewayBlueprint.buildDevice(gladys, dev));
+      }
+
+      // PoE ports on Switches/Gateways
+      if (Array.isArray(dev.port_table)) {
+        for (const port of dev.port_table) {
+          if (port.poe_caps && port.poe_caps > 0) {
+            discovered.push(poePortBlueprint.buildDevice(gladys, dev, port));
+          }
+        }
+      }
+    }
+
+    // 2. Connected Network Clients (Device Tracker & Internet Switch)
+    const clients = await unifiClient.getClients();
+    for (const client of clients) {
+      if (client.mac) {
+        discovered.push(clientPresenceBlueprint.buildDevice(gladys, client));
+      }
+    }
+
+    // 3. Wi-Fi SSID Networks
+    const wlans = await unifiClient.getWlans();
+    for (const wlan of wlans) {
+      discovered.push(wifiNetworkBlueprint.buildDevice(gladys, wlan));
+    }
+
+    logger.info(`UniFi Discovery completed: ${discovered.length} device(s) found.`);
+  } catch (err) {
+    logger.error('Error during UniFi discovery scan:', err.message);
+  }
+
+  return discovered;
 }
 
 /**
- * Find the blueprint that owns a given device, from its external_id
- * (used to route onPoll / onSetValue / onGetImage to the right device).
+ * Handle action from Configuration screen.
  */
-export function findBlueprintByDevice(gladys, device) {
-  return DEVICE_BLUEPRINTS.find((bp) => bp.deviceExternalId(gladys) === device.external_id);
-}
-
-/**
- * Build the `publishTransports` payload: one entry per blueprint that reports
- * its effective transport (dual-channel devices). Devices with a single,
- * obvious channel simply do not implement `transport()`.
- *
- * A blueprint returns either a plain transport string, or an object
- * `{ transport, degraded, message }` when it needs to flag a degraded state
- * (SDK v0.7+): "it works, but not in the nominal mode" — e.g. local preferred
- * but refused, falling back to cloud. Entries WITHOUT `degraded` clear a
- * previously published degraded state, so nominal blueprints have nothing
- * special to do.
- */
-export function buildTransportEntries(gladys, config) {
-  return DEVICE_BLUEPRINTS.filter((bp) => typeof bp.transport === 'function').map((bp) => {
-    const reported = bp.transport(gladys, config);
-    const entry = typeof reported === 'string' ? { transport: reported } : reported;
-    return { external_id: bp.deviceExternalId(gladys), ...entry };
-  });
-}
-
-/**
- * Handler of the `identify` manifest action: make the chosen device signal
- * itself so the user can spot it among identical hardware.
- *
- * `externalId` comes from the action's dynamic select (`"source": "devices"`
- * in the manifest): the Configuration screen populates the options with the
- * integration's OWN created devices (label = device name, value =
- * external_id), so the user never copies an identifier by hand.
- */
-export async function identifyDevice(gladys, externalId, config) {
-  const blueprint = findBlueprintByDevice(gladys, { external_id: externalId });
-  if (!blueprint || typeof blueprint.identify !== 'function') {
+export async function handleTestConnectionAction(gladys, unifiClient) {
+  if (!unifiClient) {
     return {
-      en: 'This device has no way to signal itself.',
-      fr: 'Cet appareil ne peut pas se signaler.',
+      en: 'UniFi client is not initialized. Check host configuration.',
+      fr: "Le client UniFi n'est pas initialisé. Vérifiez la configuration.",
     };
   }
-  await blueprint.identify(gladys, { config });
-  return {
-    en: 'Look around: the device is signalling itself.',
-    fr: "Regardez autour de vous : l'appareil se signale.",
-  };
+
+  try {
+    const res = await unifiClient.testConnection();
+    return {
+      en: res.message,
+      fr: `Connexion réussie à UniFi Network ! (${res.message})`,
+    };
+  } catch (err) {
+    return {
+      en: `Connection failed: ${err.message}`,
+      fr: `Échec de la connexion : ${err.message}`,
+    };
+  }
 }

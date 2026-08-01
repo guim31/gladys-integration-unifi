@@ -1,186 +1,252 @@
 // -----------------------------------------------------------------------------
-// Entry point of the Gladys external integration.
-//
-// Role of this file: wire the SDK to the device catalog (src/devices/). It holds
-// NO hardware logic: all the control "work" lives in the device modules. This
-// file only:
-//   1. instantiates the SDK (connection, auth, reconnection: handled for you);
-//   2. registers the event handlers BEFORE connect();
-//   3. connects and publishes the discovered devices.
-//
-// Environment variables provided by the Gladys supervisor to the container:
-//   - GLADYS_HOST_API_URL         (host API URL)
-//   - GLADYS_INTEGRATION_TOKEN    (integration-scoped JWT)
-//   - GLADYS_INTEGRATION_SELECTOR (integration identifier)
-// The SDK reads them automatically: `new GladysIntegration()` is enough.
+// UniFi Network Integration for Gladys Assistant
 // -----------------------------------------------------------------------------
 
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { normalizeConfig } from './src/config.js';
-import {
-  DEVICE_BLUEPRINTS,
-  buildDiscoveredDevices,
-  buildTransportEntries,
-  findBlueprintByDevice,
-  identifyDevice,
-} from './src/devices/index.js';
+import { UniFiClient } from './src/api/unifi-client.js';
+import { UniFiWebSocket } from './src/api/unifi-ws.js';
+import { buildDiscoveredDevices, handleTestConnectionAction } from './src/devices/index.js';
 
 const gladys = new GladysIntegration();
 
-// Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
+let unifiClient = null;
+let unifiWs = null;
+let presenceTimers = new Map();
+let knownPresenceStates = new Map();
 
-// Cleanup functions for the "push" subscriptions (e.g. the motion sensor).
-let pushCleanups = [];
-
-// --- Discovery: Gladys asks for the list of devices --------------------------
-gladys.onScanRequest(async () => {
-  logger.info('onScanRequest -> publishing discovered devices');
-  await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-});
-
-// --- Command: the user acts on a controllable feature ------------------------
-gladys.onSetValue(async (device, feature, value) => {
-  logger.info(`onSetValue <- ${feature.external_id} = ${value}`);
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onSetValue !== 'function') {
-    // Throw: the SDK sends a success:false acknowledgement to Gladys.
-    throw new Error(`No command handler for ${device.external_id}`);
+/**
+ * Initialize or re-initialize UniFi connection clients.
+ */
+async function initUniFiConnection() {
+  if (unifiWs) {
+    unifiWs.close();
+    unifiWs = null;
   }
-  await blueprint.onSetValue(gladys, { device, feature, value, config });
-});
 
-// --- Camera: Gladys needs a FRESH image of a camera device -------------------
-// Triggered by the dashboard live view or a chat intent. The resolved
-// `image/jpg;base64,...` string (≤ 150 KB) is acked back to Gladys; the ack is
-// awaited under 15 s (not the usual 5 s), so a real capture fits.
-gladys.onGetImage(async (device) => {
-  logger.info(`onGetImage <- ${device.external_id}`);
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onGetImage !== 'function') {
-    throw new Error(`No camera handler for ${device.external_id}`);
-  }
-  return blueprint.onGetImage(gladys, { device, config });
-});
+  unifiClient = new UniFiClient(config);
 
-// --- Polling: Gladys asks to refresh a device --------------------------------
-gladys.onPoll(async (device) => {
-  const blueprint = findBlueprintByDevice(gladys, device);
-  if (!blueprint || typeof blueprint.onPoll !== 'function') {
-    logger.debug(`onPoll ignored (no polling) for ${device.external_id}`);
-    return;
-  }
-  await blueprint.onPoll(gladys, config);
-});
+  try {
+    if (config.unifi_auth_type === 'credentials') {
+      await unifiClient.login();
+    }
 
-// --- Manifest actions: buttons in the Configuration screen -------------------
-// Each action declared in the `actions` field of the manifest is registered
-// per key; the message resolved by the handler is displayed under the button
-// (the ack is awaited under the action's `timeout_seconds`, not the usual 5 s).
-for (const blueprint of DEVICE_BLUEPRINTS) {
-  for (const [actionKey, handler] of Object.entries(blueprint.actions ?? {})) {
-    gladys.onAction(actionKey, (fields) => handler(gladys, { fields, config }));
+    // Start WebSocket for real-time presence/network events
+    unifiWs = new UniFiWebSocket(config, unifiClient);
+    unifiWs.on('event', (event) => handleUniFiEvent(event));
+    unifiWs.connect();
+
+    await gladys.setConnectionStatus(true);
+    logger.info('UniFi integration connected and active.');
+  } catch (err) {
+    logger.error('Failed to initialize UniFi connection:', err.message);
+    await gladys
+      .setConnectionStatus(false, {
+        en: `Connection failed: ${err.message}`,
+        fr: `Échec de connexion : ${err.message}`,
+      })
+      .catch(() => {});
   }
 }
 
-// The `identify` action targets ONE device chosen by the user, so it is not
-// owned by a single blueprint. Its manifest field declares
-// `"source": "devices"` (SDK v0.7+): instead of static `options`, the
-// Configuration screen fills the select with the integration's own created
-// devices, and the handler receives the chosen external_id as a field value.
-gladys.onAction('identify', (fields) => {
-  logger.info(`Action identify <- ${fields.device}`);
-  return identifyDevice(gladys, fields.device, config);
+/**
+ * Handle real-time WebSocket events from UniFi.
+ */
+async function handleUniFiEvent(event) {
+  if (!event || !event.key) return;
+
+  // EVT_WU_Connected (Wireless client connected), EVT_LU_Connected (LAN connected)
+  if (event.key.includes('Connected') && event.user) {
+    const mac = event.user.toLowerCase();
+    logger.info(`UniFi event: Client connected -> ${mac}`);
+    updateClientPresence(mac, 1);
+  }
+  // EVT_WU_Disconnected, EVT_LU_Disconnected
+  else if (event.key.includes('Disconnected') && event.user) {
+    const mac = event.user.toLowerCase();
+    logger.info(`UniFi event: Client disconnected -> ${mac}`);
+    scheduleClientOffline(mac);
+  }
+}
+
+/**
+ * Update client presence with immediate 1 (online).
+ */
+async function updateClientPresence(mac, state) {
+  if (presenceTimers.has(mac)) {
+    clearTimeout(presenceTimers.get(mac));
+    presenceTimers.delete(mac);
+  }
+
+  knownPresenceStates.set(mac, state);
+  const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
+  await gladys.publishState(featureId, state).catch(() => {});
+}
+
+/**
+ * Schedule client offline (0) with configured hysteresis delay.
+ */
+function scheduleClientOffline(mac) {
+  if (presenceTimers.has(mac)) {
+    clearTimeout(presenceTimers.get(mac));
+  }
+
+  const delayMs = (config.presence_offline_delay || 120) * 1000;
+  const timer = setTimeout(async () => {
+    logger.info(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
+    knownPresenceStates.set(mac, 0);
+    const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
+    await gladys.publishState(featureId, 0).catch(() => {});
+    presenceTimers.delete(mac);
+  }, delayMs);
+
+  presenceTimers.set(mac, timer);
+}
+
+// --- Discovery ---------------------------------------------------------------
+gladys.onScanRequest(async () => {
+  logger.info('onScanRequest -> publishing UniFi discovered devices');
+  const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
+  await gladys.publishDiscoveredDevices(devices);
 });
 
-// --- Configuration updated by the user ---------------------------------------
+// --- Command Execution -------------------------------------------------------
+gladys.onSetValue(async (device, feature, value) => {
+  logger.info(`onSetValue <- ${feature.external_id} = ${value}`);
+  if (!unifiClient) {
+    throw new Error('UniFi client is not connected.');
+  }
+
+  const extId = feature.external_id;
+
+  // 1. Internet Block switch (unifi:client:<mac>:block)
+  if (extId.includes(':client:') && extId.endsWith(':block')) {
+    const parts = extId.split(':');
+    const mac = parts[parts.indexOf('client') + 1];
+    if (value === 1) {
+      await unifiClient.blockClient(mac);
+    } else {
+      await unifiClient.unblockClient(mac);
+    }
+    await gladys.publishState(feature.external_id, value);
+    return;
+  }
+
+  // 2. Wi-Fi SSID Switch (unifi:wifi:<wlanId>:state)
+  if (extId.includes(':wifi:') && extId.endsWith(':state')) {
+    const parts = extId.split(':');
+    const wlanId = parts[parts.indexOf('wifi') + 1];
+    await unifiClient.setWlanState(wlanId, value === 1);
+    await gladys.publishState(feature.external_id, value);
+    return;
+  }
+
+  // 3. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
+  if (extId.includes(':poe:') && extId.endsWith(':power')) {
+    const parts = extId.split(':');
+    const deviceMac = parts[parts.indexOf('poe') + 1];
+    const portIdx = parseInt(parts[parts.indexOf('poe') + 2], 10);
+
+    const mode = value === 1 ? 'auto' : 'off';
+    await unifiClient.setPortPoeMode(deviceMac, [{ port_idx: portIdx, poe_mode: mode }]);
+    await gladys.publishState(feature.external_id, value);
+    return;
+  }
+
+  throw new Error(`Unsupported feature command for ${feature.external_id}`);
+});
+
+// --- Periodic Polling --------------------------------------------------------
+gladys.onPoll(async () => {
+  if (!unifiClient) return;
+
+  try {
+    // Poll clients presence
+    const activeClients = await unifiClient.getClients();
+    const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
+
+    for (const client of activeClients) {
+      const mac = client.mac.toLowerCase();
+      if (knownPresenceStates.get(mac) !== 1) {
+        updateClientPresence(mac, 1);
+      }
+    }
+
+    for (const [mac, state] of knownPresenceStates.entries()) {
+      if (state === 1 && !activeMacs.has(mac)) {
+        scheduleClientOffline(mac);
+      }
+    }
+
+    // Poll Gateway WAN metrics
+    const devices = await unifiClient.getDevices();
+    for (const dev of devices) {
+      if (dev.type === 'ugw' || dev.type === 'udm' || (dev.model && dev.model.includes('UCG'))) {
+        const mac = dev.mac.toLowerCase();
+        const wanStats = dev.stat || {};
+        const rxSpeedMbps = Math.round(((wanStats.wan_rx_bytes_r || 0) * 8) / 1000000);
+        const txSpeedMbps = Math.round(((wanStats.wan_tx_bytes_r || 0) * 8) / 1000000);
+
+        await gladys
+          .publishState(gladys.externalId(`gateway:${mac}:wan-down`), rxSpeedMbps)
+          .catch(() => {});
+        await gladys
+          .publishState(gladys.externalId(`gateway:${mac}:wan-up`), txSpeedMbps)
+          .catch(() => {});
+        await gladys
+          .publishState(gladys.externalId(`gateway:${mac}:status`), dev.state === 1 ? 1 : 0)
+          .catch(() => {});
+      }
+    }
+  } catch (err) {
+    logger.debug('Polling UniFi state error:', err.message);
+  }
+});
+
+// --- Manifest Action (Test Connection) ---------------------------------------
+gladys.onAction('test_connection', async () => {
+  return await handleTestConnectionAction(gladys, unifiClient);
+});
+
+// --- Configuration Updates ---------------------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
   config = normalizeConfig(newConfig);
-  // Re-publish the devices: some properties (unit, frequency) depend on it.
-  // publishDiscoveredDevices is idempotent (upsert by external_id).
-  await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-  // The reserved GLADYS_PREFER_LOCAL key arrives here like any other key:
-  // re-route the dual-channel devices, then reflect the ACTUAL outcome.
-  await publishDeviceTransports();
+  await initUniFiConnection();
+  const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
+  await gladys.publishDiscoveredDevices(devices);
 });
 
-// --- Connection lifecycle ----------------------------------------------------
-// The SDK itself logs the WebSocket lifecycle (connections, disconnections,
-// reconnection attempts) under the `gladys-sdk` name: no need to log it again
-// here, these handlers only run the integration's own (re)initialization.
+// --- Lifecycle Connection ----------------------------------------------------
 gladys.on('connected', async () => {
   try {
-    // 1) Fetch the config filled in by the user.
     config = normalizeConfig(await gladys.getConfig());
-
-    // 2) (Re)publish all devices as soon as we are connected.
-    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
-
-    // 3) Publish the per-device transport badge (cloud/local, dual-channel
-    // devices only). Lightweight channel: on a live switch, call it again
-    // without re-publishing the devices.
-    await publishDeviceTransports();
-
-    // 4) Start the real-time subscriptions ("push" sensors, camera snapshots).
-    stopPushSubscriptions();
-    pushCleanups = DEVICE_BLUEPRINTS.filter((bp) => typeof bp.startPush === 'function').map((bp) =>
-      bp.startPush(gladys, config),
-    );
-
-    // 5) Report the application-level status, shown in the Configuration
-    // screen. Distinct from the container state machine: an integration can
-    // be RUNNING and still disconnected from its third-party service.
-    await gladys.setConnectionStatus(true);
+    await initUniFiConnection();
+    const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
+    await gladys.publishDiscoveredDevices(devices);
   } catch (err) {
-    logger.error('Post-connection initialization failed', err);
-    await gladys
-      .setConnectionStatus(false, {
-        en: 'Initialization failed, check the integration logs.',
-        fr: "L'initialisation a échoué, consultez les logs de l'intégration.",
-      })
-      .catch(() => {});
+    logger.error('Post-connection initialization failed:', err);
   }
 });
 
 gladys.on('disconnected', () => {
-  stopPushSubscriptions();
+  if (unifiWs) unifiWs.close();
 });
 
-// Publish the effective transport of every dual-channel device
-// ('local' | 'cloud' | 'unreachable'), rendered as a badge in the Gladys UI.
-// An entry can also flag a degraded state (`{ degraded: true, message }`,
-// SDK v0.7+): the badge keeps its transport color plus an orange dot, and the
-// tooltip shows the reason — see src/devices/plug.js.
-async function publishDeviceTransports() {
-  const entries = buildTransportEntries(gladys, config);
-  if (entries.length > 0) {
-    await gladys.publishTransports(entries);
-  }
-}
-
-function stopPushSubscriptions() {
-  for (const cleanup of pushCleanups) {
-    try {
-      cleanup?.();
-    } catch (err) {
-      logger.error('Push subscription cleanup failed', err);
-    }
-  }
-  pushCleanups = [];
-}
-
-// --- Graceful shutdown -------------------------------------------------------
-// The SDK stops the push subscriptions, disconnects cleanly and exits with
-// code 0 when the supervisor stops the container (SIGTERM/SIGINT).
+// --- Graceful Shutdown -------------------------------------------------------
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
-  stopPushSubscriptions();
+  if (unifiWs) unifiWs.close();
+  for (const timer of presenceTimers.values()) {
+    clearTimeout(timer);
+  }
+  presenceTimers.clear();
 });
 
 // --- Startup -----------------------------------------------------------------
-logger.info('Starting the template integration...');
+logger.info('Starting Gladys UniFi Integration...');
 gladys.connect().catch((err) => {
-  logger.error('Initial connection failed', err);
+  logger.error('Initial connection failed:', err);
   process.exit(1);
 });

@@ -1,42 +1,37 @@
 // -----------------------------------------------------------------------------
-// Integration configuration.
-//
-// The configuration is filled in by the user in Gladys, from the `config_schema`
-// declared in `gladys-assistant-integration.json`. The SDK fetches it for you
-// (`gladys.getConfig()`) and notifies you of every change through
-// `gladys.onConfigUpdated()`.
-//
-// This module only provides defaults and normalizes the received object, so the
-// rest of the code never has to deal with `undefined`.
+// UniFi Integration configuration.
 // -----------------------------------------------------------------------------
 
-// Defaults: they MUST stay consistent with the `default` values declared in the
-// `config_schema` of the manifest.
 export const DEFAULT_CONFIG = {
-  latitude: 48.8566, // Paris
-  longitude: 2.3522,
-  unit: 'celsius', // 'celsius' | 'fahrenheit'
-  poll_frequency: 300, // seconds, how often sensors are refreshed
-  // Reserved key (NOT in config_schema): because the manifest declares both
-  // 'local' and 'cloud' in its `transports` field, Gladys shows a standard
-  // "Prefer the local connection" toggle and sends the user's choice here.
-  // Read-only for the integration; defaults to true.
+  unifi_host: '192.168.1.1',
+  unifi_port: 443,
+  unifi_auth_type: 'api_key', // 'api_key' | 'credentials'
+  unifi_api_key: '',
+  unifi_username: '',
+  unifi_password: '',
+  unifi_site_id: 'default',
+  presence_offline_delay: 120, // seconds
   GLADYS_PREFER_LOCAL: true,
 };
 
 /**
- * Merge the user config with the defaults.
- * @param {Record<string, unknown>} raw config returned by the SDK
+ * Merge the user config with defaults and coerce types.
+ * @param {Record<string, unknown>} raw config from Gladys SDK
  */
 export function normalizeConfig(raw = {}) {
   return {
     ...DEFAULT_CONFIG,
     ...raw,
-    // Force the types: config may arrive as strings from a form.
-    latitude: Number(raw.latitude ?? DEFAULT_CONFIG.latitude),
-    longitude: Number(raw.longitude ?? DEFAULT_CONFIG.longitude),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    // The preference is a boolean; anything but an explicit false means true.
+    unifi_host: String(raw.unifi_host ?? DEFAULT_CONFIG.unifi_host).trim(),
+    unifi_port: Number(raw.unifi_port ?? DEFAULT_CONFIG.unifi_port),
+    unifi_auth_type: String(raw.unifi_auth_type ?? DEFAULT_CONFIG.unifi_auth_type).trim(),
+    unifi_api_key: String(raw.unifi_api_key ?? DEFAULT_CONFIG.unifi_api_key).trim(),
+    unifi_username: String(raw.unifi_username ?? DEFAULT_CONFIG.unifi_username).trim(),
+    unifi_password: String(raw.unifi_password ?? DEFAULT_CONFIG.unifi_password),
+    unifi_site_id: String(raw.unifi_site_id ?? DEFAULT_CONFIG.unifi_site_id).trim() || 'default',
+    presence_offline_delay: Number(
+      raw.presence_offline_delay ?? DEFAULT_CONFIG.presence_offline_delay,
+    ),
     GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
   };
 }

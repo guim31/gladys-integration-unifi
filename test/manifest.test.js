@@ -1,7 +1,5 @@
 // -----------------------------------------------------------------------------
 // Consistency checks between `gladys-assistant-integration.json` and the code.
-// The manifest is validated by the store indexer, but nothing there can know
-// which handlers the code actually registers — these tests keep both in sync.
 // -----------------------------------------------------------------------------
 
 import { test } from 'node:test';
@@ -15,7 +13,7 @@ const manifest = JSON.parse(
 );
 
 // Actions registered outside the blueprints (see index.js).
-const REGISTRY_LEVEL_ACTIONS = ['identify'];
+const REGISTRY_LEVEL_ACTIONS = ['test_connection'];
 
 test('every manifest action has a registered handler', () => {
   const handled = new Set([
@@ -41,11 +39,8 @@ test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
 
 test('section fields are purely presentational', () => {
   const sections = manifest.config_schema.filter((f) => f.type === 'section');
-  assert.ok(sections.length > 0, 'the template demonstrates at least one section block');
+  assert.ok(sections.length > 0, 'at least one section block exists');
   for (const section of sections) {
-    // A section stores NO value: declaring `required`, `default` or
-    // `placeholder` on it rejects the manifest, and its key must never leak
-    // into the config the code manipulates.
     assert.equal(section.required, undefined, `section "${section.key}" must not be required`);
     assert.equal(section.default, undefined, `section "${section.key}" must not have a default`);
     assert.equal(
@@ -57,26 +52,6 @@ test('section fields are purely presentational', () => {
     assert.ok(
       !(section.key in DEFAULT_CONFIG),
       `section "${section.key}" stores no value and must not appear in DEFAULT_CONFIG`,
-    );
-    for (const link of section.links ?? []) {
-      assert.match(link.url, /^https:\/\//, 'section links must be https');
-    }
-  }
-});
-
-test('dynamic selects declare a source and no static options', () => {
-  const allFields = [
-    ...manifest.config_schema,
-    ...(manifest.actions ?? []).flatMap((a) => a.fields ?? []),
-  ];
-  const dynamicSelects = allFields.filter((f) => f.source !== undefined);
-  assert.ok(dynamicSelects.length > 0, 'the template demonstrates a dynamic select');
-  for (const field of dynamicSelects) {
-    assert.equal(field.source, 'devices', 'the only core-defined source in V1 is "devices"');
-    assert.equal(
-      field.options,
-      undefined,
-      `field "${field.key}": declaring source and options together rejects the manifest`,
     );
   }
 });

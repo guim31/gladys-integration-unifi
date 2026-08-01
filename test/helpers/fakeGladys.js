@@ -1,14 +1,5 @@
 // -----------------------------------------------------------------------------
 // Minimal in-memory stand-in for the Gladys SDK object, for unit tests.
-//
-// It reproduces the only surface the device modules rely on:
-//   - externalIds(type, platformId) -> { device, feature(key) }
-//   - publishState / publishStates   -> record calls so tests can assert them
-//   - publishCameraImage             -> record calls so tests can assert them
-//   - publishTransports              -> record calls so tests can assert them
-//   - setConnectionStatus            -> record calls so tests can assert them
-// This lets us test the pure "wiring" logic (discovery payloads, dispatch)
-// without a running Gladys server or a real WebSocket.
 // -----------------------------------------------------------------------------
 
 export function createFakeGladys() {
@@ -22,6 +13,10 @@ export function createFakeGladys() {
     cameraImages,
     transports,
     connectionStatuses,
+
+    externalId(suffix) {
+      return `unifi:${suffix}`;
+    },
 
     externalIds(type, platformId) {
       const device = `${type}:${platformId}`;
