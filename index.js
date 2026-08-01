@@ -299,6 +299,18 @@ async function pollAllStates() {
       const statusFeatureId = gladys.externalId(`gateway:${mac}:status`);
       await gladys.publishState(statusFeatureId, dev.state === 1 ? 1 : 0).catch(() => {});
 
+      // Publish PoE port status on Switches/Gateways
+      if (Array.isArray(dev.port_table)) {
+        for (const port of dev.port_table) {
+          if (port.poe_caps && port.poe_caps > 0 && port.port_idx) {
+            const portIdx = port.port_idx;
+            const poeFeatureId = gladys.externalId(`poe:${mac}:${portIdx}:power`);
+            const isPoeOn = Boolean(port.poe_mode && port.poe_mode !== 'off');
+            await gladys.publishState(poeFeatureId, isPoeOn ? 1 : 0).catch(() => {});
+          }
+        }
+      }
+
       if (isGateway) {
         const rxRate =
           dev.stat?.gw?.wan_rx_bytes_r ??
@@ -325,6 +337,20 @@ async function pollAllStates() {
           .publishState(gladys.externalId(`gateway:${mac}:wan-up`), txSpeedMbps)
           .catch(() => {});
       }
+    }
+
+    // 4. Poll Wi-Fi SSID Networks state
+    try {
+      const wlans = await unifiClient.getWlans();
+      for (const wlan of wlans) {
+        if (!wlan._id && !wlan.name) continue;
+        const wlanId = String(wlan._id || wlan.name);
+        const featureId = gladys.externalId(`wifi:${wlanId}:state`);
+        const isEnabled = wlan.enabled !== false;
+        await gladys.publishState(featureId, isEnabled ? 1 : 0).catch(() => {});
+      }
+    } catch {
+      // Ignore if getWlans fails
     }
   } catch (err) {
     logger.warn('Polling UniFi state error:', err.message);
