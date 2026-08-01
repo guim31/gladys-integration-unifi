@@ -39,6 +39,7 @@ async function initUniFiConnection() {
 
     await gladys.setConnectionStatus(true);
     logger.info('UniFi integration connected and active.');
+    startInternalPolling();
   } catch (err) {
     logger.error('Failed to initialize UniFi connection:', err.message);
     await gladys
@@ -157,9 +158,21 @@ gladys.onSetValue(async (device, feature, value) => {
   throw new Error(`Unsupported feature command for ${feature.external_id}`);
 });
 
+let pollIntervalTimer = null;
+let isPolling = false;
+
+function startInternalPolling() {
+  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
+  logger.info('Starting internal UniFi polling timer (every 30 seconds)...');
+  pollIntervalTimer = setInterval(async () => {
+    await pollAllStates();
+  }, 30000);
+}
+
 // --- Periodic & Initial Polling ------------------------------------------------
 async function pollAllStates() {
-  if (!unifiClient) return;
+  if (!unifiClient || isPolling) return;
+  isPolling = true;
 
   try {
     // 1. Poll active clients presence
@@ -236,7 +249,9 @@ async function pollAllStates() {
       }
     }
   } catch (err) {
-    logger.debug('Polling UniFi state error:', err.message);
+    logger.warn('Polling UniFi state error:', err.message);
+  } finally {
+    isPolling = false;
   }
 }
 
@@ -272,13 +287,15 @@ gladys.on('connected', async () => {
   }
 });
 
-gladys.on('disconnected', () => {
+gladys.onDisconnected(() => {
+  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   if (unifiWs) unifiWs.close();
 });
 
 // --- Graceful Shutdown -------------------------------------------------------
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
+  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   if (unifiWs) unifiWs.close();
   for (const timer of presenceTimers.values()) {
     clearTimeout(timer);
