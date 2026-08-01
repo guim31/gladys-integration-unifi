@@ -287,7 +287,7 @@ gladys.on('connected', async () => {
   }
 });
 
-gladys.onDisconnected(() => {
+gladys.on('disconnected', () => {
   if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   if (unifiWs) unifiWs.close();
 });
