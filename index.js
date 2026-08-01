@@ -131,6 +131,9 @@ gladys.onSetValue(async (device, feature, value) => {
     const suffix = isAccess ? ':access' : ':block';
     const mac = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
 
+    // Optimistic UI state update so Gladys UI toggle moves instantly without lag
+    await gladys.publishState(feature.external_id, value).catch(() => {});
+
     try {
       if (isAccess) {
         // 1 = Access Authorized (Unblocked), 0 = Access Cut (Blocked)
@@ -155,12 +158,13 @@ gladys.onSetValue(async (device, feature, value) => {
           logger.info(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
         }
       }
-      await gladys.publishState(feature.external_id, value);
     } catch (err) {
       logger.error(
         `[UniFi Action Error] Failed to change internet access state for MAC ${mac}:`,
         err?.response?.data || err.message,
       );
+      // Rollback UI toggle if operation failed
+      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
       throw err;
     }
     return;
@@ -171,18 +175,23 @@ gladys.onSetValue(async (device, feature, value) => {
     const tag = ':wifi:';
     const suffix = ':state';
     const wlanId = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
+
+    // Optimistic UI state update so Gladys UI toggle moves instantly without lag
+    await gladys.publishState(feature.external_id, value).catch(() => {});
+
     try {
       logger.info(
         `[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`,
       );
       const res = await unifiClient.setWlanState(wlanId, value === 1);
       logger.info(`[UniFi Action Response] Wi-Fi WLAN ${wlanId}:`, res);
-      await gladys.publishState(feature.external_id, value);
     } catch (err) {
       logger.error(
         `[UniFi Action Error] Failed to set Wi-Fi WLAN ${wlanId} state:`,
         err?.response?.data || err.message,
       );
+      // Rollback UI toggle if operation failed
+      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
       throw err;
     }
     return;
@@ -197,18 +206,23 @@ gladys.onSetValue(async (device, feature, value) => {
     const deviceMac = middle.slice(0, lastColon);
     const portIdx = parseInt(middle.slice(lastColon + 1), 10);
     const mode = value === 1 ? 'auto' : 'off';
+
+    // Optimistic UI state update so Gladys UI toggle moves instantly without lag
+    await gladys.publishState(feature.external_id, value).catch(() => {});
+
     try {
       logger.info(`[UniFi Action] Setting PoE port ${portIdx} on switch ${deviceMac} = ${mode}`);
       const res = await unifiClient.setPortPoeMode(deviceMac, [
         { port_idx: portIdx, poe_mode: mode },
       ]);
       logger.info(`[UniFi Action Response] PoE port ${portIdx} on ${deviceMac}:`, res);
-      await gladys.publishState(feature.external_id, value);
     } catch (err) {
       logger.error(
         `[UniFi Action Error] Failed to set PoE mode on ${deviceMac} port ${portIdx}:`,
         err?.response?.data || err.message,
       );
+      // Rollback UI toggle if operation failed
+      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
       throw err;
     }
     return;
