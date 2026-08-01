@@ -8,7 +8,7 @@
   },
   "version": "1.0.0",
   "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.0.0",
-  "gladys_version": ">=4.84.0",
+  "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
   "config_schema": [
@@ -23,7 +23,7 @@
     },
     {
       "key": "unifi_host",
-      "type": "text",
+      "type": "string",
       "label": { "en": "IP Address / Hostname", "fr": "Adresse IP / Hôte" },
       "description": {
         "en": "IP address of your UniFi OS console (e.g. 192.168.1.1).",
@@ -66,7 +66,7 @@
     },
     {
       "key": "unifi_api_key",
-      "type": "password",
+      "type": "secret",
       "label": { "en": "Local API Key", "fr": "Clé API Locale" },
       "description": {
         "en": "API Key generated in UniFi OS > Control Plane > System > API Keys.",
@@ -76,19 +76,19 @@
     },
     {
       "key": "unifi_username",
-      "type": "text",
+      "type": "string",
       "label": { "en": "Local Username", "fr": "Nom d'utilisateur local" },
       "required": false
     },
     {
       "key": "unifi_password",
-      "type": "password",
+      "type": "secret",
       "label": { "en": "Local Password", "fr": "Mot de passe local" },
       "required": false
     },
     {
       "key": "unifi_site_id",
-      "type": "text",
+      "type": "string",
       "label": { "en": "Site ID", "fr": "ID du Site" },
       "required": true,
       "default": "default"
