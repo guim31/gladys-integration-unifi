@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
 
 test('normalizeConfig returns the defaults when called with no argument', () => {
-  assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig(), {
+    ...DEFAULT_CONFIG,
+    allowed_ssids: [],
+  });
 });
 
 test('normalizeConfig keeps user values over the defaults', () => {
@@ -15,6 +18,11 @@ test('normalizeConfig keeps user values over the defaults', () => {
     unifi_username: 'admin',
     unifi_password: 'secretpassword',
     presence_offline_delay: 300,
+    discover_infrastructure: false,
+    discover_clients: true,
+    only_active_clients: false,
+    client_connection_type: 'wifi_only',
+    allowed_ssids: 'Maison, IoT ',
   });
 
   assert.equal(config.unifi_host, '10.0.0.1');
@@ -24,6 +32,11 @@ test('normalizeConfig keeps user values over the defaults', () => {
   assert.equal(config.unifi_username, 'admin');
   assert.equal(config.unifi_password, 'secretpassword');
   assert.equal(config.presence_offline_delay, 300);
+  assert.equal(config.discover_infrastructure, false);
+  assert.equal(config.discover_clients, true);
+  assert.equal(config.only_active_clients, false);
+  assert.equal(config.client_connection_type, 'wifi_only');
+  assert.deepEqual(config.allowed_ssids, ['Maison', 'IoT']);
 });
 
 test('normalizeConfig coerces numeric strings coming from a form', () => {

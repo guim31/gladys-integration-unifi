@@ -6,8 +6,8 @@
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
     "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
-  "version": "1.4.7",
-  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.4.7",
+  "version": "1.5.0",
+  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.5.0",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
@@ -109,6 +109,81 @@
       "default": 120,
       "min": 0,
       "max": 3600
+    },
+    {
+      "key": "filtering_section",
+      "type": "section",
+      "label": {
+        "en": "Device Discovery & Filtering",
+        "fr": "Filtres de découverte des appareils"
+      },
+      "description": {
+        "en": "Configure which devices should be discovered and published to Gladys.",
+        "fr": "Configurez quels appareils doivent être découverts et envoyés à Gladys."
+      }
+    },
+    {
+      "key": "discover_infrastructure",
+      "type": "boolean",
+      "label": {
+        "en": "Discover Infrastructure (Console, APs, Switches)",
+        "fr": "Découvrir l'infrastructure (Console, APs, Switches)"
+      },
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "discover_clients",
+      "type": "boolean",
+      "label": { "en": "Discover Network Clients", "fr": "Découvrir les clients du réseau" },
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "only_active_clients",
+      "type": "boolean",
+      "label": {
+        "en": "Only Connected Clients (Ignore historical known clients)",
+        "fr": "Clients connectés uniquement (Ignorer les anciens clients)"
+      },
+      "description": {
+        "en": "Only import currently connected clients to prevent importing hundreds of offline historical devices.",
+        "fr": "Importer uniquement les clients actuellement connectés pour éviter d'importer des centaines d'anciens appareils hors-ligne."
+      },
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "client_connection_type",
+      "type": "select",
+      "label": { "en": "Client Connection Type", "fr": "Type de connexion des clients" },
+      "required": false,
+      "default": "all",
+      "options": [
+        {
+          "value": "all",
+          "label": { "en": "All (Wi-Fi & Wired)", "fr": "Tous (Wi-Fi et Filaire)" }
+        },
+        {
+          "value": "wifi_only",
+          "label": { "en": "Wi-Fi Only", "fr": "Wi-Fi uniquement" }
+        },
+        {
+          "value": "wired_only",
+          "label": { "en": "Wired Only", "fr": "Filaire uniquement" }
+        }
+      ]
+    },
+    {
+      "key": "allowed_ssids",
+      "type": "string",
+      "label": { "en": "Allowed Wi-Fi SSIDs", "fr": "SSIDs Wi-Fi autorisés" },
+      "description": {
+        "en": "Filter Wi-Fi clients by SSID names (comma separated, e.g. Home, IoT). Leave empty to allow all SSIDs.",
+        "fr": "Filtrer les clients Wi-Fi par noms de SSID (séparés par des virgules, ex: Maison, IoT). Laissez vide pour autoriser tous les SSIDs."
+      },
+      "required": false,
+      "default": ""
     }
   ],
   "actions": [

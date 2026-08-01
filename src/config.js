@@ -11,6 +11,11 @@ export const DEFAULT_CONFIG = {
   unifi_password: '',
   unifi_site_id: 'default',
   presence_offline_delay: 120, // seconds
+  discover_infrastructure: true,
+  discover_clients: true,
+  only_active_clients: true,
+  client_connection_type: 'all', // 'all', 'wifi_only', 'wired_only'
+  allowed_ssids: '',
   GLADYS_PREFER_LOCAL: true,
 };
 
@@ -19,6 +24,12 @@ export const DEFAULT_CONFIG = {
  * @param {Record<string, unknown>} raw config from Gladys SDK
  */
 export function normalizeConfig(raw = {}) {
+  const allowedSsidsRaw = String(raw.allowed_ssids ?? DEFAULT_CONFIG.allowed_ssids);
+  const parsedSsids = allowedSsidsRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   return {
     ...DEFAULT_CONFIG,
     ...raw,
@@ -32,6 +43,13 @@ export function normalizeConfig(raw = {}) {
     presence_offline_delay: Number(
       raw.presence_offline_delay ?? DEFAULT_CONFIG.presence_offline_delay,
     ),
+    discover_infrastructure: raw.discover_infrastructure !== false,
+    discover_clients: raw.discover_clients !== false,
+    only_active_clients: raw.only_active_clients !== false,
+    client_connection_type: ['all', 'wifi_only', 'wired_only'].includes(raw.client_connection_type)
+      ? raw.client_connection_type
+      : DEFAULT_CONFIG.client_connection_type,
+    allowed_ssids: parsedSsids,
     GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
   };
 }

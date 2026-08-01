@@ -124,3 +124,83 @@ test('getClientDisplayName formats vendor OUI and IP fallback when name is missi
   };
   assert.equal(getClientDisplayName(mockWhitespaceName), 'Samsung (192.168.100.45)');
 });
+
+test('buildDiscoveredDevices filters clients and infrastructure based on config', async () => {
+  const { buildDiscoveredDevices } = await import('../src/devices/index.js');
+
+  const mockClient = {
+    isLoggedIn: true,
+    login: async () => {},
+    getDevices: async () => [{ mac: '11:22:33:44:55:66', name: 'Switch-24', port_table: [] }],
+    getClients: async () => [
+      { mac: 'aa:bb:cc:dd:ee:01', name: 'Phone Wifi', is_wired: false, essid: 'Home' },
+      { mac: 'aa:bb:cc:dd:ee:02', name: 'PC Wired', is_wired: true },
+      { mac: 'aa:bb:cc:dd:ee:03', name: 'IoT Guest', is_wired: false, essid: 'Guest' },
+    ],
+    getKnownClients: async () => [
+      { mac: 'aa:bb:cc:dd:ee:99', name: 'Old Phone Offline', is_wired: false, essid: 'Home' },
+    ],
+    getWlans: async () => [{ _id: 'wlan_1', name: 'Home' }],
+  };
+
+  // Test 1: Default config (only_active_clients = true)
+  const configDefault = {
+    discover_infrastructure: true,
+    discover_clients: true,
+    only_active_clients: true,
+    client_connection_type: 'all',
+    allowed_ssids: [],
+  };
+
+  const devices1 = await buildDiscoveredDevices(gladys, configDefault, mockClient);
+  // 1 Switch + 3 Active clients (presence + internet = 6) + 1 WLAN = 8
+  assert.equal(devices1.length, 8);
+
+  // Test 2: wifi_only & allowed_ssids = ['Home']
+  const configWifiHome = {
+    discover_infrastructure: false,
+    discover_clients: true,
+    only_active_clients: true,
+    client_connection_type: 'wifi_only',
+    allowed_ssids: ['Home'],
+  };
+
+  const devices2 = await buildDiscoveredDevices(gladys, configWifiHome, mockClient);
+  // Infra skipped (0 switch, 0 wlan). Client 01 matches (wifi + Home SSID => 2 devices). Client 02 (wired) and Client 03 (Guest SSID) skipped.
+  assert.equal(devices2.length, 2);
+  assert.equal(devices2[0].name, 'Phone Wifi');
+
+  // Test 3: include known clients (only_active_clients = false)
+  const configWithKnown = {
+    discover_infrastructure: false,
+    discover_clients: true,
+    only_active_clients: false,
+    client_connection_type: 'all',
+    allowed_ssids: [],
+  };
+
+  const devices3 = await buildDiscoveredDevices(gladys, configWithKnown, mockClient);
+  // 3 active + 1 known client = 4 clients * 2 = 8 devices
+  assert.equal(devices3.length, 8);
+});
+
+test('publishDiscoveredDevicesInChunks batches devices into chunks of 100 max', async () => {
+  const { publishDiscoveredDevicesInChunks } = await import('../src/devices/index.js');
+
+  const publishedChunks = [];
+  const fakeGladysSdk = {
+    publishDiscoveredDevices: async (chunk) => {
+      publishedChunks.push(chunk);
+    },
+  };
+
+  // Create 250 mock devices
+  const mockDevices = Array.from({ length: 250 }, (_, i) => ({ id: `dev_${i}` }));
+
+  await publishDiscoveredDevicesInChunks(fakeGladysSdk, mockDevices, 100);
+
+  assert.equal(publishedChunks.length, 3);
+  assert.equal(publishedChunks[0].length, 100);
+  assert.equal(publishedChunks[1].length, 100);
+  assert.equal(publishedChunks[2].length, 50);
+});

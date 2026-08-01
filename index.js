@@ -6,7 +6,11 @@ import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { normalizeConfig } from './src/config.js';
 import { UniFiClient } from './src/api/unifi-client.js';
 import { UniFiWebSocket } from './src/api/unifi-ws.js';
-import { buildDiscoveredDevices, handleTestConnectionAction } from './src/devices/index.js';
+import {
+  buildDiscoveredDevices,
+  handleTestConnectionAction,
+  publishDiscoveredDevicesInChunks,
+} from './src/devices/index.js';
 
 const gladys = new GladysIntegration();
 
@@ -109,7 +113,7 @@ function scheduleClientOffline(mac) {
 gladys.onScanRequest(async () => {
   logger.info('onScanRequest -> publishing UniFi discovered devices');
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
-  await gladys.publishDiscoveredDevices(devices);
+  await publishDiscoveredDevicesInChunks(gladys, devices);
 });
 
 // --- Command Execution -------------------------------------------------------
@@ -374,7 +378,7 @@ gladys.onConfigUpdated(async (newConfig) => {
   config = normalizeConfig(newConfig);
   await initUniFiConnection();
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
-  await gladys.publishDiscoveredDevices(devices);
+  await publishDiscoveredDevicesInChunks(gladys, devices);
   await pollAllStates();
 });
 
@@ -384,7 +388,7 @@ gladys.on('connected', async () => {
     config = normalizeConfig(await gladys.getConfig());
     await initUniFiConnection();
     const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
-    await gladys.publishDiscoveredDevices(devices);
+    await publishDiscoveredDevicesInChunks(gladys, devices);
     await pollAllStates();
   } catch (err) {
     logger.error('Post-connection initialization failed:', err);
