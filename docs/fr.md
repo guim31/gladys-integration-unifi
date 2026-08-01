@@ -12,25 +12,44 @@ Cette intégration permet de connecter votre console **Ubiquiti UniFi OS** (UCG 
 
 ---
 
-## Configuration & Authentification
+## Guide d'Authentification : Où trouver les identifiants ?
 
-### Option 1 : Clé API Locale (Recommandé - UniFi OS 3.2+)
+L'intégration prend en charge 2 méthodes au choix :
 
-1. Connectez-vous à votre console UniFi OS (ex: `https://192.168.1.1`).
-2. Allez dans **Control Plane > System > API Keys**.
-3. Générez une **Clé API Locale** et copiez-la.
-4. Dans Gladys, configurez l'intégration avec l'adresse IP, choisissez le mode **Clé API Locale** et collez votre clé.
+### Méthode A : Clé API Locale (Recommandé)
 
-### Option 2 : Identifiants Locaux (Nom d'utilisateur & Mot de passe)
+Selon la version de votre console UniFi OS :
 
-1. Créez un utilisateur local (administrateur en lecture seule de préférence) dans votre console UniFi.
-2. Dans Gladys, choisissez le mode **Nom d'utilisateur & Mot de passe** et renseignez vos identifiants.
+1. **Option 1 (Sur la console locale)** :
+   - Connectez-vous à l'interface de votre UCG / UDM (ex: `https://192.168.1.1`).
+   - Cliquez sur l'icône **Paramètres (Roue crantée ⚙️)** en bas à gauche.
+   - Allez dans **Système (System)** > **Intégrations (API)** ou **Avancé (Advanced)**.
+   - Cliquez sur **Créer une clé API** (Create New API Key), donnez-lui un nom et copiez la clé générée.
+
+2. **Option 2 (Via UniFi Site Manager)** :
+   - Rendez-vous sur [unifi.ui.com](https://unifi.ui.com).
+   - Allez dans **Settings** (icône ⚙️) > **API Keys**.
+   - Cliquez sur **Create New API Key** et copiez la clé.
+
+---
+
+### Méthode B : Compte Administrateur Local (Nom d'utilisateur & Mot de passe)
+
+Si le menu de clé API n'est pas activé sur votre version d'UniFi OS :
+
+1. Connectez-vous à votre console UniFi OS (`https://192.168.1.1`).
+2. Dans la barre latérale gauche, cliquez sur l'icône **Admins / Utilisateurs (👥)** (ou dans _Control Plane / Identity > Admins_).
+3. Cliquez sur **Ajouter un administrateur (Add Admin)**.
+4. Sélectionnez **Accès Local uniquement (Local Access Only)**.
+5. Définissez un nom d'utilisateur (ex: `gladys`) et un mot de passe.
+6. Attribuez-lui le rôle **Lecture seule (Read Only)** ou **Admin** selon vos besoins (les droits d'écriture sont nécessaires si vous voulez bloquer des appareils ou éteindre des ports PoE).
+7. Dans Gladys, choisissez le mode **Nom d'utilisateur & Mot de passe local** et entrez ces identifiants.
 
 ---
 
 ## Utilisation
 
-1. Une fois la configuration enregistrée, cliquez sur **Tester la connexion UniFi** pour valider la communication.
+1. Une fois la configuration enregistrée dans Gladys, cliquez sur le bouton **Tester la connexion UniFi** pour valider la communication.
 2. Allez dans l'onglet **Découverte** de Gladys pour ajouter votre Gateway, vos clients réseau (smartphones), vos ports PoE et vos réseaux Wi-Fi.
 
 ## Dépannage

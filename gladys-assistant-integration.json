@@ -69,8 +69,8 @@
       "type": "secret",
       "label": { "en": "Local API Key", "fr": "Clé API Locale" },
       "description": {
-        "en": "API Key generated in UniFi OS > Control Plane > System > API Keys.",
-        "fr": "Clé API générée dans UniFi OS > Control Plane > Système > Clés API."
+        "en": "API Key generated in Settings > System > Integrations or via unifi.ui.com > Settings > API Keys.",
+        "fr": "Clé API générée dans Paramètres > Système > Intégrations ou sur unifi.ui.com > Settings > API Keys."
       },
       "required": false
     },

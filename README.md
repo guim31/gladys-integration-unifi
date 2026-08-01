@@ -25,7 +25,7 @@ Official external integration for **Ubiquiti UniFi Network** on [Gladys Assistan
 
 ---
 
-## Getting Started
+## Getting Started & Authentication
 
 ### 1. Installation in Gladys Assistant
 
@@ -34,13 +34,13 @@ From the Gladys Assistant interface:
 1. Go to **Integrations > External Integrations**.
 2. Search for **UniFi Network** and click **Install**.
 
-### 2. Configuration
+### 2. Authentication Options
 
-- **IP Address**: Enter your UniFi Gateway IP (e.g. `192.168.1.1`).
-- **Auth Method**:
-  - **Local API Key** (Recommended - generated in _UniFi OS > Control Plane > System > API Keys_).
-  - **Username & Password** (Local UniFi account).
-- **Presence Offline Delay**: Delay in seconds before marking a disconnected client as absent (default: `120`s).
+- **Option A: Local API Key** (Recommended):
+  - Local: Console Settings ⚙️ > System > Integrations / API.
+  - Cloud: [unifi.ui.com](https://unifi.ui.com) > Settings > API Keys.
+- **Option B: Local Username & Password**:
+  - Console sidebar > Admins 👥 > Add Admin > Local Access Only (Read Only or Admin).
 
 ---
 
@@ -54,8 +54,9 @@ cd gladys-integration-unifi
 # Install dependencies
 npm install
 
-# Run linter
+# Run linter & tests
 npm run lint
+npm test
 
 # Build Docker image locally
 docker build -t gladys-integration-unifi .
