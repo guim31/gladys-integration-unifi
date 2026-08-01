@@ -164,9 +164,15 @@ export class UniFiClient {
         if (this.config.unifi_auth_type === 'api_key') {
           throw new Error(
             'Erreur 401 (Non autorisé) : La clé API est refusée par UniFi OS. Assurez-vous d’avoir copié la clé générée dans UniFi Network > Integrations.',
+            { cause: err },
           );
         }
-        throw new Error('Erreur 401 (Non autorisé) : Nom d’utilisateur ou mot de passe incorrect.');
+        throw new Error(
+          'Erreur 401 (Non autorisé) : Nom d’utilisateur ou mot de passe incorrect.',
+          {
+            cause: err,
+          },
+        );
       }
       throw err;
     }
