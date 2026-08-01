@@ -167,53 +167,65 @@ async function pollAllStates() {
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
     for (const client of activeClients) {
+      if (!client.mac) continue;
       const mac = client.mac.toLowerCase();
-      if (knownPresenceStates.get(mac) !== 1) {
-        updateClientPresence(mac, 1);
-      }
+      await updateClientPresence(mac, 1);
     }
 
-    for (const [mac, state] of knownPresenceStates.entries()) {
-      if (state === 1 && !activeMacs.has(mac)) {
-        scheduleClientOffline(mac);
-      }
-    }
-
-    // Also fetch known clients to initialize inactive ones to 0 (Absence)
+    // 2. Poll known clients to publish 0 for inactive ones
     try {
       const knownClients = await unifiClient.getKnownClients();
       for (const kClient of knownClients) {
         if (!kClient.mac) continue;
         const mac = kClient.mac.toLowerCase();
-        if (!activeMacs.has(mac) && !knownPresenceStates.has(mac)) {
-          knownPresenceStates.set(mac, 0);
-          const featureId = gladys.externalId(`client:${mac}:presence`);
-          await gladys.publishState(featureId, 0).catch(() => {});
+        if (!activeMacs.has(mac)) {
+          if (!presenceTimers.has(mac)) {
+            knownPresenceStates.set(mac, 0);
+            const featureId = gladys.externalId(`client:${mac}:presence`);
+            await gladys.publishState(featureId, 0).catch(() => {});
+          }
         }
       }
     } catch {
       // Ignore if getKnownClients fails
     }
 
-    // 2. Poll Infrastructure devices (Gateways, APs, Switches)
+    // 3. Poll Infrastructure devices (Gateways, APs, Switches)
     const devices = await unifiClient.getDevices();
     for (const dev of devices) {
       if (!dev.mac) continue;
       const mac = dev.mac.toLowerCase();
       const isGateway =
+        dev.is_gateway ||
         dev.type === 'ugw' ||
         dev.type === 'udm' ||
         dev.type === 'ucg' ||
-        (dev.model && dev.model.toUpperCase().includes('UCG'));
+        dev.type === 'gateway' ||
+        dev.type === 'gw' ||
+        (dev.model && /ucg|udm|ugw|usg|uxg|gateway/i.test(dev.model));
 
       // Publish Status for ALL infrastructure devices (U6+, U6 Pro, Switches, Gateways)
       const statusFeatureId = gladys.externalId(`gateway:${mac}:status`);
       await gladys.publishState(statusFeatureId, dev.state === 1 ? 1 : 0).catch(() => {});
 
       if (isGateway) {
-        const wanStats = dev.stat || {};
-        const rxSpeedMbps = Math.round(((wanStats.wan_rx_bytes_r || 0) * 8) / 1000000);
-        const txSpeedMbps = Math.round(((wanStats.wan_tx_bytes_r || 0) * 8) / 1000000);
+        const rxRate =
+          dev.stat?.gw?.wan_rx_bytes_r ??
+          dev.stat?.wan_rx_bytes_r ??
+          dev.uplink?.rx_bytes_r ??
+          dev.uplink?.rx_rate ??
+          dev.wan1?.rx_bytes_r ??
+          0;
+        const txRate =
+          dev.stat?.gw?.wan_tx_bytes_r ??
+          dev.stat?.wan_tx_bytes_r ??
+          dev.uplink?.tx_bytes_r ??
+          dev.uplink?.tx_rate ??
+          dev.wan1?.tx_bytes_r ??
+          0;
+
+        const rxSpeedMbps = Math.round((rxRate * 8) / 1000000);
+        const txSpeedMbps = Math.round((txRate * 8) / 1000000);
 
         await gladys
           .publishState(gladys.externalId(`gateway:${mac}:wan-down`), rxSpeedMbps)
