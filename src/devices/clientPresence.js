@@ -49,6 +49,12 @@ export const clientBlueprint = {
     const ids = gladys.externalIds('client', mac);
     const displayName = getClientDisplayName(client);
 
+    const clientIp = typeof client.ip === 'string' ? client.ip.trim() : '';
+    const params = [{ name: 'MAC_ADDRESS', value: mac.toUpperCase() }];
+    if (clientIp) {
+      params.push({ name: 'IP_ADDRESS', value: clientIp });
+    }
+
     return {
       name: displayName,
       selector: deviceSelector,
@@ -81,6 +87,7 @@ export const clientBlueprint = {
           keep_history: true,
         },
       ],
+      params,
     };
   },
 };

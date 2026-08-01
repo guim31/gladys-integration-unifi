@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
 import { gatewayBlueprint } from '../src/devices/gateway.js';
 import { clientPresenceBlueprint, getClientDisplayName } from '../src/devices/clientPresence.js';
-import { poePortBlueprint } from '../src/devices/poePort.js';
 import { wifiNetworkBlueprint } from '../src/devices/wifiNetwork.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
@@ -17,26 +16,38 @@ test('every UniFi blueprint exposes key and builder functions', () => {
   }
 });
 
-test('gatewayBlueprint formats device payload correctly', () => {
+test('gatewayBlueprint formats device payload, IP/MAC params, and PoE features correctly', () => {
   const mockGateway = {
     mac: '74:83:c2:11:22:33',
-    name: 'UCG-Fiber',
-    model: 'UCG-Fiber',
-    type: 'ugw',
+    name: 'USW-24-PoE',
+    model: 'USW-24-PoE',
+    type: 'usw',
+    ip: '192.168.1.2',
+    port_table: [
+      { port_idx: 1, poe_caps: 7, name: 'Camera Entrance' },
+      { port_idx: 2, poe_caps: 7, name: 'AP Salon' },
+    ],
   };
 
   const device = gatewayBlueprint.buildDevice(gladys, mockGateway);
-  assert.equal(device.name, 'UCG-Fiber');
+  assert.equal(device.name, 'USW-24-PoE');
   assert.equal(device.external_id, gladys.externalIds('gateway', '74:83:c2:11:22:33').device);
+  // Status + 2 PoE ports = 3 features
   assert.equal(device.features.length, 3);
-  assert.equal(typeof device.selector, 'string');
+  assert.equal(device.features[1].name, 'Alimentation PoE (Port 1: Camera Entrance)');
+  assert.equal(device.features[2].name, 'Alimentation PoE (Port 2: AP Salon)');
+  assert.deepEqual(device.params, [
+    { name: 'MAC_ADDRESS', value: '74:83:C2:11:22:33' },
+    { name: 'IP_ADDRESS', value: '192.168.1.2' },
+  ]);
 });
 
-test('clientBlueprint formats presence & internet access features in a single device', () => {
+test('clientBlueprint formats presence, internet access features, and IP/MAC params', () => {
   const mockClient = {
     mac: 'aa:bb:cc:dd:ee:ff',
     name: 'Thomas Smartphone',
     hostname: 'iPhone',
+    ip: '192.168.1.50',
     is_guest: false,
   };
 
@@ -46,26 +57,10 @@ test('clientBlueprint formats presence & internet access features in a single de
   assert.equal(device.features.length, 2);
   assert.equal(device.features[0].name, 'Présence');
   assert.equal(device.features[1].name, 'Accès Internet');
-  assert.equal(typeof device.selector, 'string');
-});
-
-test('poePortBlueprint formats switch PoE port correctly', () => {
-  const mockSwitch = {
-    mac: '11:22:33:44:55:66',
-    name: 'USW-24-PoE',
-  };
-  const mockPort = {
-    port_idx: 1,
-    name: 'Port 1 Camera',
-  };
-
-  const device = poePortBlueprint.buildDevice(gladys, mockSwitch, mockPort);
-  assert.equal(device.name, 'Port PoE : Port 1 Camera');
-  assert.equal(
-    device.external_id,
-    gladys.externalIds('poe-port', '11:22:33:44:55:66:port:1').device,
-  );
-  assert.equal(device.features.length, 1);
+  assert.deepEqual(device.params, [
+    { name: 'MAC_ADDRESS', value: 'AA:BB:CC:DD:EE:FF' },
+    { name: 'IP_ADDRESS', value: '192.168.1.50' },
+  ]);
   assert.equal(typeof device.selector, 'string');
 });
 

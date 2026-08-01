@@ -5,15 +5,9 @@
 import { logger } from '@gladysassistant/integration-sdk';
 import { gatewayBlueprint } from './gateway.js';
 import { clientBlueprint } from './clientPresence.js';
-import { poePortBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
-export const DEVICE_BLUEPRINTS = [
-  gatewayBlueprint,
-  clientBlueprint,
-  poePortBlueprint,
-  wifiNetworkBlueprint,
-];
+export const DEVICE_BLUEPRINTS = [gatewayBlueprint, clientBlueprint, wifiNetworkBlueprint];
 
 /**
  * Perform dynamic scan of all UniFi infrastructure devices, clients, PoE ports, and WLANs.
@@ -46,15 +40,6 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
         if (dev.mac) {
           discovered.push(gatewayBlueprint.buildDevice(gladys, dev));
           addedMacs.add(dev.mac.toLowerCase());
-
-          // PoE ports on Switches/Gateways
-          if (Array.isArray(dev.port_table)) {
-            for (const port of dev.port_table) {
-              if (port.poe_caps && port.poe_caps > 0) {
-                discovered.push(poePortBlueprint.buildDevice(gladys, dev, port));
-              }
-            }
-          }
         }
       }
     } else {

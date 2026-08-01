@@ -71,6 +71,36 @@ export const gatewayBlueprint = {
       );
     }
 
+    // Attach PoE ports as features of this infrastructure device
+    if (Array.isArray(unifiDevice.port_table)) {
+      for (const port of unifiDevice.port_table) {
+        if (port.poe_caps && port.poe_caps > 0 && port.port_idx) {
+          const portIdx = port.port_idx;
+          const poeFeatureId = gladys.externalId(`poe:${mac}:${portIdx}:power`);
+          const portName = port.name ? ` (Port ${portIdx}: ${port.name})` : ` (Port ${portIdx})`;
+
+          features.push({
+            name: `Alimentation PoE${portName}`,
+            selector: `${deviceSelector}-poe-${portIdx}`,
+            external_id: poeFeatureId,
+            category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+            type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+            min: 0,
+            max: 1,
+            read_only: false,
+            has_feedback: true,
+            keep_history: true,
+          });
+        }
+      }
+    }
+
+    const deviceIp = typeof unifiDevice.ip === 'string' ? unifiDevice.ip.trim() : '';
+    const params = [{ name: 'MAC_ADDRESS', value: mac.toUpperCase() }];
+    if (deviceIp) {
+      params.push({ name: 'IP_ADDRESS', value: deviceIp });
+    }
+
     return {
       name: unifiDevice.name || unifiDevice.model || 'UniFi Device',
       selector: deviceSelector,
@@ -78,6 +108,7 @@ export const gatewayBlueprint = {
       model: unifiDevice.model || 'UniFi Hardware',
       poll_frequency: 60000,
       features,
+      params,
     };
   },
 };
