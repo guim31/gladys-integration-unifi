@@ -1,29 +1,35 @@
 import { DEVICE_FEATURE_CATEGORIES, DEVICE_FEATURE_TYPES } from '@gladysassistant/integration-sdk';
 
 /**
- * Blueprint for UniFi Switch PoE Port control.
+ * Blueprint for Switch PoE Port power switch.
  */
 export const poePortBlueprint = {
   key: 'poe-port',
 
-  deviceExternalId(gladys, deviceMac, portIdx) {
-    return gladys.externalIds('poe', `${deviceMac.toLowerCase()}:${portIdx}`).device;
+  deviceExternalId(gladys, switchMac, portIdx) {
+    const key = `${switchMac.toLowerCase()}:port:${portIdx}`;
+    return gladys.externalIds('poe-port', key).device;
   },
 
-  buildDevice(gladys, switchDevice, port) {
-    const deviceMac = switchDevice.mac.toLowerCase();
-    const portIdx = port.port_idx;
-    const ids = gladys.externalIds('poe', `${deviceMac}:${portIdx}`);
-    const portName = port.name || `Port ${portIdx}`;
+  buildDevice(gladys, switchDev, port) {
+    const switchMac = switchDev.mac.toLowerCase();
+    const portIdx = port.port_idx || 1;
+    const cleanMac = switchMac.replace(/[^a-z0-9]/g, '');
+    const deviceSelector = `unifi-poe-${cleanMac}-port-${portIdx}`;
+
+    const key = `${switchMac}:port:${portIdx}`;
+    const ids = gladys.externalIds('poe-port', key);
 
     return {
-      name: `${switchDevice.name || switchDevice.model} - ${portName} (PoE)`,
+      name: `Switch Port ${portIdx} (${port.name || 'PoE'})`,
+      selector: deviceSelector,
       external_id: ids.device,
-      model: 'Switch PoE Port',
+      model: 'PoE Switch Port',
       features: [
         {
           name: 'PoE Power',
-          external_id: ids.feature('power'),
+          selector: `${deviceSelector}-power`,
+          external_id: ids.feature('poe-power'),
           category: DEVICE_FEATURE_CATEGORIES.SWITCH,
           type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
           min: 0,

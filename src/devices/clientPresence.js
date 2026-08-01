@@ -12,16 +12,20 @@ export const clientPresenceBlueprint = {
 
   buildDevice(gladys, client) {
     const mac = client.mac.toLowerCase();
+    const cleanMac = mac.replace(/[^a-z0-9]/g, '');
+    const deviceSelector = `unifi-client-${cleanMac}`;
     const ids = gladys.externalIds('client', mac);
     const displayName = client.name || client.hostname || client.ip || `Device (${mac.slice(-5)})`;
 
     return {
       name: displayName,
+      selector: deviceSelector,
       external_id: ids.device,
       model: client.is_guest ? 'Guest Device' : 'Network Client',
       features: [
         {
           name: 'Presence',
+          selector: `${deviceSelector}-presence`,
           external_id: ids.feature('presence'),
           category: DEVICE_FEATURE_CATEGORIES.PRESENCE_SENSOR,
           type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
@@ -32,6 +36,7 @@ export const clientPresenceBlueprint = {
         },
         {
           name: 'Block Internet',
+          selector: `${deviceSelector}-block`,
           external_id: ids.feature('block'),
           category: DEVICE_FEATURE_CATEGORIES.SWITCH,
           type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,

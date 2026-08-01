@@ -22,12 +22,14 @@ test('gatewayBlueprint formats device payload correctly', () => {
     mac: '74:83:c2:11:22:33',
     name: 'UCG-Fiber',
     model: 'UCG-Fiber',
+    type: 'ugw',
   };
 
   const device = gatewayBlueprint.buildDevice(gladys, mockGateway);
   assert.equal(device.name, 'UCG-Fiber');
   assert.equal(device.external_id, gladys.externalIds('gateway', '74:83:c2:11:22:33').device);
   assert.equal(device.features.length, 3);
+  assert.equal(typeof device.selector, 'string');
 });
 
 test('clientPresenceBlueprint formats presence & block features', () => {
@@ -42,6 +44,7 @@ test('clientPresenceBlueprint formats presence & block features', () => {
   assert.equal(device.name, 'Thomas Smartphone');
   assert.equal(device.external_id, gladys.externalIds('client', 'aa:bb:cc:dd:ee:ff').device);
   assert.equal(device.features.length, 2);
+  assert.equal(typeof device.selector, 'string');
 });
 
 test('poePortBlueprint formats switch PoE port correctly', () => {
@@ -55,9 +58,13 @@ test('poePortBlueprint formats switch PoE port correctly', () => {
   };
 
   const device = poePortBlueprint.buildDevice(gladys, mockSwitch, mockPort);
-  assert.equal(device.name, 'USW-24-PoE - Port 1 Camera (PoE)');
-  assert.equal(device.external_id, gladys.externalIds('poe', '11:22:33:44:55:66:1').device);
+  assert.equal(device.name, 'Switch Port 1 (Port 1 Camera)');
+  assert.equal(
+    device.external_id,
+    gladys.externalIds('poe-port', '11:22:33:44:55:66:port:1').device,
+  );
   assert.equal(device.features.length, 1);
+  assert.equal(typeof device.selector, 'string');
 });
 
 test('wifiNetworkBlueprint formats SSID device correctly', () => {
@@ -70,4 +77,5 @@ test('wifiNetworkBlueprint formats SSID device correctly', () => {
   assert.equal(device.name, 'Wi-Fi SSID: Wi-Fi Guest');
   assert.equal(device.external_id, gladys.externalIds('wifi', 'wlan_12345').device);
   assert.equal(device.features.length, 1);
+  assert.equal(typeof device.selector, 'string');
 });

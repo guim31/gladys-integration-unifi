@@ -16,6 +16,8 @@ export const gatewayBlueprint = {
 
   buildDevice(gladys, unifiDevice) {
     const mac = unifiDevice.mac.toLowerCase();
+    const cleanMac = mac.replace(/[^a-z0-9]/g, '');
+    const deviceSelector = `unifi-gateway-${cleanMac}`;
     const ids = gladys.externalIds('gateway', mac);
     const isGateway =
       unifiDevice.type === 'ugw' ||
@@ -26,6 +28,7 @@ export const gatewayBlueprint = {
     const features = [
       {
         name: 'Status',
+        selector: `${deviceSelector}-status`,
         external_id: ids.feature('status'),
         category: DEVICE_FEATURE_CATEGORIES.SENSOR,
         type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
@@ -40,6 +43,7 @@ export const gatewayBlueprint = {
       features.push(
         {
           name: 'WAN Upload Speed',
+          selector: `${deviceSelector}-wan-up`,
           external_id: ids.feature('wan-up'),
           category: DEVICE_FEATURE_CATEGORIES.SPEED_SENSOR,
           type: DEVICE_FEATURE_TYPES.SPEED_SENSOR.INTEGER,
@@ -51,6 +55,7 @@ export const gatewayBlueprint = {
         },
         {
           name: 'WAN Download Speed',
+          selector: `${deviceSelector}-wan-down`,
           external_id: ids.feature('wan-down'),
           category: DEVICE_FEATURE_CATEGORIES.SPEED_SENSOR,
           type: DEVICE_FEATURE_TYPES.SPEED_SENSOR.INTEGER,
@@ -65,6 +70,7 @@ export const gatewayBlueprint = {
 
     return {
       name: unifiDevice.name || unifiDevice.model || 'UniFi Device',
+      selector: deviceSelector,
       external_id: ids.device,
       model: unifiDevice.model || 'UniFi Hardware',
       features,
