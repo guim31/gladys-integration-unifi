@@ -2,11 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
 import { gatewayBlueprint } from '../src/devices/gateway.js';
-import {
-  clientPresenceBlueprint,
-  clientInternetBlueprint,
-  getClientDisplayName,
-} from '../src/devices/clientPresence.js';
+import { clientPresenceBlueprint, getClientDisplayName } from '../src/devices/clientPresence.js';
 import { poePortBlueprint } from '../src/devices/poePort.js';
 import { wifiNetworkBlueprint } from '../src/devices/wifiNetwork.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -36,7 +32,7 @@ test('gatewayBlueprint formats device payload correctly', () => {
   assert.equal(typeof device.selector, 'string');
 });
 
-test('clientPresenceBlueprint formats presence feature', () => {
+test('clientBlueprint formats presence & internet access features in a single device', () => {
   const mockClient = {
     mac: 'aa:bb:cc:dd:ee:ff',
     name: 'Thomas Smartphone',
@@ -47,25 +43,9 @@ test('clientPresenceBlueprint formats presence feature', () => {
   const device = clientPresenceBlueprint.buildDevice(gladys, mockClient);
   assert.equal(device.name, 'Thomas Smartphone');
   assert.equal(device.external_id, gladys.externalIds('client', 'aa:bb:cc:dd:ee:ff').device);
-  assert.equal(device.features.length, 1);
-  assert.equal(typeof device.selector, 'string');
-});
-
-test('clientInternetBlueprint formats internet access switch feature', () => {
-  const mockClient = {
-    mac: 'aa:bb:cc:dd:ee:ff',
-    name: 'Thomas Smartphone',
-    hostname: 'iPhone',
-    is_guest: false,
-  };
-
-  const device = clientInternetBlueprint.buildDevice(gladys, mockClient);
-  assert.equal(device.name, 'Accès Internet : Thomas Smartphone');
-  assert.equal(
-    device.external_id,
-    gladys.externalIds('client-internet', 'aa:bb:cc:dd:ee:ff').device,
-  );
-  assert.equal(device.features.length, 1);
+  assert.equal(device.features.length, 2);
+  assert.equal(device.features[0].name, 'Présence');
+  assert.equal(device.features[1].name, 'Accès Internet');
   assert.equal(typeof device.selector, 'string');
 });
 
@@ -153,8 +133,8 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   };
 
   const devices1 = await buildDiscoveredDevices(gladys, configDefault, mockClient);
-  // 1 Switch + 3 Active clients (presence + internet = 6) + 1 WLAN = 8
-  assert.equal(devices1.length, 8);
+  // 1 Switch + 3 Active clients (unified device) + 1 WLAN = 5 devices
+  assert.equal(devices1.length, 5);
 
   // Test 2: wifi_only & allowed_ssids = ['Home']
   const configWifiHome = {
@@ -166,8 +146,8 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   };
 
   const devices2 = await buildDiscoveredDevices(gladys, configWifiHome, mockClient);
-  // Infra skipped (0 switch, 0 wlan). Client 01 matches (wifi + Home SSID => 2 devices). Client 02 (wired) and Client 03 (Guest SSID) skipped.
-  assert.equal(devices2.length, 2);
+  // Infra skipped (0 switch, 0 wlan). Client 01 matches (wifi + Home SSID => 1 unified device). Client 02 (wired) and Client 03 (Guest SSID) skipped.
+  assert.equal(devices2.length, 1);
   assert.equal(devices2[0].name, 'Phone Wifi');
 
   // Test 3: include known clients (only_active_clients = false)
@@ -180,8 +160,8 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   };
 
   const devices3 = await buildDiscoveredDevices(gladys, configWithKnown, mockClient);
-  // 3 active + 1 known client = 4 clients * 2 = 8 devices
-  assert.equal(devices3.length, 8);
+  // 3 active + 1 known client = 4 clients (unified devices)
+  assert.equal(devices3.length, 4);
 });
 
 test('publishDiscoveredDevicesInChunks batches devices into chunks of 100 max', async () => {

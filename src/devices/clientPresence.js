@@ -33,10 +33,10 @@ export function getClientDisplayName(client) {
 }
 
 /**
- * Blueprint for Network Client (Smartphone, PC, TV) presence tracker.
+ * Blueprint for Network Client (Smartphone, PC, TV) presence tracker & internet control.
  */
-export const clientPresenceBlueprint = {
-  key: 'client-presence',
+export const clientBlueprint = {
+  key: 'client',
 
   deviceExternalId(gladys, clientMac) {
     return gladys.externalIds('client', clientMac.toLowerCase()).device;
@@ -68,35 +68,6 @@ export const clientPresenceBlueprint = {
           has_feedback: false,
           keep_history: true,
         },
-      ],
-    };
-  },
-};
-
-/**
- * Blueprint for Network Client Internet Access control switch.
- */
-export const clientInternetBlueprint = {
-  key: 'client-internet',
-
-  deviceExternalId(gladys, clientMac) {
-    return gladys.externalIds('client-internet', clientMac.toLowerCase()).device;
-  },
-
-  buildDevice(gladys, client) {
-    const mac = client.mac.toLowerCase();
-    const cleanMac = mac.replace(/[^a-z0-9]/g, '');
-    const deviceSelector = `unifi-client-internet-${cleanMac}`;
-    const ids = gladys.externalIds('client-internet', mac);
-    const displayName = getClientDisplayName(client);
-
-    return {
-      name: `Accès Internet : ${displayName}`,
-      selector: deviceSelector,
-      external_id: ids.device,
-      model: 'Contrôle Accès Internet',
-      poll_frequency: 60000,
-      features: [
         {
           name: 'Accès Internet',
           selector: `${deviceSelector}-access`,
@@ -113,3 +84,7 @@ export const clientInternetBlueprint = {
     };
   },
 };
+
+// Aliases for backwards compatibility
+export const clientPresenceBlueprint = clientBlueprint;
+export const clientInternetBlueprint = clientBlueprint;

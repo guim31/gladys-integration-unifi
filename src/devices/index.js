@@ -4,14 +4,13 @@
 
 import { logger } from '@gladysassistant/integration-sdk';
 import { gatewayBlueprint } from './gateway.js';
-import { clientPresenceBlueprint, clientInternetBlueprint } from './clientPresence.js';
+import { clientBlueprint } from './clientPresence.js';
 import { poePortBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
 export const DEVICE_BLUEPRINTS = [
   gatewayBlueprint,
-  clientPresenceBlueprint,
-  clientInternetBlueprint,
+  clientBlueprint,
   poePortBlueprint,
   wifiNetworkBlueprint,
 ];
@@ -105,8 +104,7 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
         }
 
         addedMacs.add(client.mac.toLowerCase());
-        discovered.push(clientPresenceBlueprint.buildDevice(gladys, client));
-        discovered.push(clientInternetBlueprint.buildDevice(gladys, client));
+        discovered.push(clientBlueprint.buildDevice(gladys, client));
       }
     } else {
       logger.info('Network client discovery is disabled in configuration.');

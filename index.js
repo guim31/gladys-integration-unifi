@@ -270,8 +270,11 @@ async function pollAllStates() {
         const mac = kClient.mac.toLowerCase();
 
         const isBlocked = Boolean(kClient.blocked);
-        const internetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
-        await gladys.publishState(internetFeatureId, isBlocked ? 0 : 1).catch(() => {});
+        const accessValue = isBlocked ? 0 : 1;
+        const internetFeatureId = gladys.externalId(`client:${mac}:access`);
+        const legacyInternetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
+        await gladys.publishState(internetFeatureId, accessValue).catch(() => {});
+        await gladys.publishState(legacyInternetFeatureId, accessValue).catch(() => {});
 
         if (!activeMacs.has(mac)) {
           if (!presenceTimers.has(mac)) {
