@@ -3,8 +3,8 @@
   "type": "device",
   "name": "UniFi Network",
   "description": {
-    "en": "Ubiquiti UniFi integration for UCG Fiber, UDM, Switches, Access Points and network presence tracking.",
-    "fr": "Intégration Ubiquiti UniFi pour UCG Fiber, UDM, Switches, Points d'accès et détection de présence."
+    "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
+    "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
   "version": "1.0.0",
   "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.0.0",
