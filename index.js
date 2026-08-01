@@ -28,9 +28,7 @@ async function initUniFiConnection() {
   unifiClient = new UniFiClient(config);
 
   try {
-    if (config.unifi_auth_type === 'credentials') {
-      await unifiClient.login();
-    }
+    await unifiClient.login();
 
     // Start WebSocket for real-time presence/network events
     unifiWs = new UniFiWebSocket(config, unifiClient);

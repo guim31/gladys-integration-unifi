@@ -12,38 +12,19 @@ Connect your **Ubiquiti UniFi OS** console (UCG Fiber, Dream Machine UDM/UDM-SE,
 
 ---
 
-## Authentication Guide: Where to find credentials?
+## Local Authentication Guide (100% Local First)
 
-The integration supports 2 authentication methods:
+The integration connects directly to your local UniFi console using a **local admin account**:
 
-### Method A: Local API Key (Recommended)
+### Create a dedicated local admin account in UniFi OS:
 
-Depending on your UniFi OS version:
-
-1. **Option 1 (On local console)**:
-   - Log into your UniFi console (e.g. `https://192.168.1.1`).
-   - Click **Settings (Gear icon ⚙️)** at bottom left.
-   - Navigate to **System** > **Integrations (API)** or **Advanced**.
-   - Click **Create New API Key** and copy the generated key.
-
-2. **Option 2 (Via UniFi Site Manager)**:
-   - Visit [unifi.ui.com](https://unifi.ui.com).
-   - Go to **Settings** (⚙️) > **API Keys**.
-   - Click **Create New API Key** and copy the key.
-
----
-
-### Method B: Local Admin Account (Username & Password)
-
-If API Keys are not enabled on your UniFi OS version:
-
-1. Log into your UniFi OS console (`https://192.168.1.1`).
+1. Log into your UniFi OS console (`https://192.168.1.1` or `https://192.168.100.1`).
 2. In the left navigation bar, click **Admins / Users (👥)** (or under _Control Plane / Identity > Admins_).
 3. Click **Add Admin**.
 4. Select **Local Access Only**.
 5. Set a username (e.g. `gladys`) and password.
-6. Grant **Read Only** or **Admin** role (Admin write access is required if you want to block internet or toggle PoE ports).
-7. In Gladys, select **Local Username & Password** mode and enter credentials.
+6. Grant **Admin** role (required to block internet or toggle PoE ports) or **Read Only**.
+7. In Gladys, enter your console IP address, username `gladys`, and local password.
 
 ---
 

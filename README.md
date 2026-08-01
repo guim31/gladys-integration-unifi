@@ -34,13 +34,10 @@ From the Gladys Assistant interface:
 1. Go to **Integrations > External Integrations**.
 2. Search for **UniFi Network** and click **Install**.
 
-### 2. Authentication Options
+### 2. Local Authentication
 
-- **Option A: Local API Key** (Recommended):
-  - Local: Console Settings ⚙️ > System > Integrations / API.
-  - Cloud: [unifi.ui.com](https://unifi.ui.com) > Settings > API Keys.
-- **Option B: Local Username & Password**:
-  - Console sidebar > Admins 👥 > Add Admin > Local Access Only (Read Only or Admin).
+- **IP Address**: Enter your UniFi Gateway local IP (e.g. `192.168.1.1` or `192.168.100.1`).
+- **Local Credentials**: Local UniFi admin account (created in _Console > Users & Admins (👥) > Add Admin > Local Access Only_).
 
 ---
 

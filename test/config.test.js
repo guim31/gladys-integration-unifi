@@ -10,7 +10,6 @@ test('normalizeConfig keeps user values over the defaults', () => {
   const config = normalizeConfig({
     unifi_host: '10.0.0.1',
     unifi_port: 8443,
-    unifi_auth_type: 'credentials',
     unifi_username: 'admin',
     unifi_password: 'secretpassword',
     presence_offline_delay: 300,
@@ -18,7 +17,6 @@ test('normalizeConfig keeps user values over the defaults', () => {
 
   assert.equal(config.unifi_host, '10.0.0.1');
   assert.equal(config.unifi_port, 8443);
-  assert.equal(config.unifi_auth_type, 'credentials');
   assert.equal(config.unifi_username, 'admin');
   assert.equal(config.unifi_password, 'secretpassword');
   assert.equal(config.presence_offline_delay, 300);

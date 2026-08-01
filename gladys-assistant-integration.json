@@ -6,8 +6,8 @@
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
     "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.0.0",
+  "version": "1.1.0",
+  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.1.0",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
@@ -15,10 +15,10 @@
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "UniFi OS Connection", "fr": "Connexion UniFi OS" },
+      "label": { "en": "Local UniFi OS Connection", "fr": "Connexion Locale UniFi OS" },
       "description": {
-        "en": "Enter the local IP address of your UniFi Cloud Gateway (UCG Fiber, UDM, Cloud Key) and authentication method.",
-        "fr": "Entrez l'adresse IP locale de votre Gateway UniFi (UCG Fiber, UDM, Cloud Key) et le mode d'authentification."
+        "en": "Enter the IP address and local administrator credentials of your UniFi console (UCG Fiber, UDM, Cloud Key).",
+        "fr": "Entrez l'adresse IP et les identifiants d'un administrateur local de votre console UniFi (UCG Fiber, UDM, Cloud Key)."
       }
     },
     {
@@ -42,49 +42,21 @@
       "max": 65535
     },
     {
-      "key": "unifi_auth_type",
-      "type": "select",
-      "label": { "en": "Authentication Method", "fr": "Mode d'authentification" },
-      "required": true,
-      "default": "api_key",
-      "options": [
-        {
-          "value": "api_key",
-          "label": {
-            "en": "Local API Key (UniFi OS 3.2+ - Recommended)",
-            "fr": "Clé API Locale (UniFi OS 3.2+ - Recommandé)"
-          }
-        },
-        {
-          "value": "credentials",
-          "label": {
-            "en": "Local Username & Password",
-            "fr": "Nom d'utilisateur & Mot de passe local"
-          }
-        }
-      ]
-    },
-    {
-      "key": "unifi_api_key",
-      "type": "secret",
-      "label": { "en": "Local API Key", "fr": "Clé API Locale" },
-      "description": {
-        "en": "API Key generated in Settings > System > Integrations or via unifi.ui.com > Settings > API Keys.",
-        "fr": "Clé API générée dans Paramètres > Système > Intégrations ou sur unifi.ui.com > Settings > API Keys."
-      },
-      "required": false
-    },
-    {
       "key": "unifi_username",
       "type": "string",
       "label": { "en": "Local Username", "fr": "Nom d'utilisateur local" },
-      "required": false
+      "description": {
+        "en": "Local UniFi admin account created in Console > Users & Admins.",
+        "fr": "Compte admin local créé dans Console > Utilisateurs & Admins."
+      },
+      "required": true,
+      "default": ""
     },
     {
       "key": "unifi_password",
       "type": "secret",
       "label": { "en": "Local Password", "fr": "Mot de passe local" },
-      "required": false
+      "required": true
     },
     {
       "key": "unifi_site_id",
@@ -99,7 +71,7 @@
       "label": { "en": "Presence Offline Delay (s)", "fr": "Délai de déconnexion présence (s)" },
       "description": {
         "en": "Inactivity delay before marking a device as absent (prevents deep sleep toggling).",
-        "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les fauts positifs en veille)."
+        "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les faux positifs en veille)."
       },
       "required": false,
       "default": 120,
