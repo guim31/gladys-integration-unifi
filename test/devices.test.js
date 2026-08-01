@@ -16,29 +16,50 @@ test('every UniFi blueprint exposes key and builder functions', () => {
   }
 });
 
-test('gatewayBlueprint formats device payload, IP/MAC params, and PoE features correctly', () => {
+test('gatewayBlueprint formats device payload and IP/MAC params correctly', () => {
   const mockGateway = {
     mac: '74:83:c2:11:22:33',
     name: 'USW-24-PoE',
     model: 'USW-24-PoE',
     type: 'usw',
     ip: '192.168.1.2',
+  };
+
+  const device = gatewayBlueprint.buildDevice(gladys, mockGateway);
+  assert.equal(device.name, 'USW-24-PoE');
+  assert.equal(device.external_id, gladys.externalIds('gateway', '74:83:c2:11:22:33').device);
+  assert.equal(device.features.length, 1);
+  assert.equal(device.features[0].name, 'Status');
+  assert.deepEqual(device.params, [
+    { name: 'MAC_ADDRESS', value: '74:83:C2:11:22:33' },
+    { name: 'IP_ADDRESS', value: '192.168.1.2' },
+  ]);
+});
+
+test('poeSwitchBlueprint formats dedicated switch PoE device payload and features', async () => {
+  const { poeSwitchBlueprint } = await import('../src/devices/poePort.js');
+
+  const mockSwitch = {
+    mac: '74:83:c2:11:22:33',
+    name: 'Cloud Gateway Fiber',
+    model: 'UCG-Fiber',
+    type: 'ucg',
+    ip: '192.168.1.1',
     port_table: [
       { port_idx: 1, poe_caps: 7, name: 'Camera Entrance' },
       { port_idx: 2, poe_caps: 7, name: 'AP Salon' },
     ],
   };
 
-  const device = gatewayBlueprint.buildDevice(gladys, mockGateway);
-  assert.equal(device.name, 'USW-24-PoE');
-  assert.equal(device.external_id, gladys.externalIds('gateway', '74:83:c2:11:22:33').device);
-  // Status + 2 PoE ports = 3 features
-  assert.equal(device.features.length, 3);
-  assert.equal(device.features[1].name, 'Alimentation PoE (Port 1: Camera Entrance)');
-  assert.equal(device.features[2].name, 'Alimentation PoE (Port 2: AP Salon)');
+  const device = poeSwitchBlueprint.buildDevice(gladys, mockSwitch);
+  assert.equal(device.name, 'Switch PoE : Cloud Gateway Fiber');
+  assert.equal(device.external_id, gladys.externalIds('poe-switch', '74:83:c2:11:22:33').device);
+  assert.equal(device.features.length, 2);
+  assert.equal(device.features[0].name, 'Port 1 (Camera Entrance)');
+  assert.equal(device.features[1].name, 'Port 2 (AP Salon)');
   assert.deepEqual(device.params, [
     { name: 'MAC_ADDRESS', value: '74:83:C2:11:22:33' },
-    { name: 'IP_ADDRESS', value: '192.168.1.2' },
+    { name: 'IP_ADDRESS', value: '192.168.1.1' },
   ]);
 });
 
@@ -106,7 +127,13 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   const mockClient = {
     isLoggedIn: true,
     login: async () => {},
-    getDevices: async () => [{ mac: '11:22:33:44:55:66', name: 'Switch-24', port_table: [] }],
+    getDevices: async () => [
+      {
+        mac: '11:22:33:44:55:66',
+        name: 'Switch-24',
+        port_table: [{ port_idx: 1, poe_caps: 7, name: 'AP' }],
+      },
+    ],
     getClients: async () => [
       { mac: 'aa:bb:cc:dd:ee:01', name: 'Phone Wifi', is_wired: false, essid: 'Home' },
       { mac: 'aa:bb:cc:dd:ee:02', name: 'PC Wired', is_wired: true },
@@ -128,8 +155,8 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   };
 
   const devices1 = await buildDiscoveredDevices(gladys, configDefault, mockClient);
-  // 1 Switch + 3 Active clients (unified device) + 1 WLAN = 5 devices
-  assert.equal(devices1.length, 5);
+  // 1 Switch hardware + 1 Switch PoE device + 3 Active clients + 1 WLAN = 6 devices
+  assert.equal(devices1.length, 6);
 
   // Test 2: wifi_only & allowed_ssids = ['Home']
   const configWifiHome = {

@@ -1,6 +1,6 @@
 {
   "name": "gladys-integration-unifi",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "description": "Gladys Assistant external integration for Ubiquiti UniFi Network (UCG Fiber, UDM, Switches, APs, Presence Tracker).",
   "type": "module",
