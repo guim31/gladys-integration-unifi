@@ -157,12 +157,12 @@ gladys.onSetValue(async (device, feature, value) => {
   throw new Error(`Unsupported feature command for ${feature.external_id}`);
 });
 
-// --- Periodic Polling --------------------------------------------------------
-gladys.onPoll(async () => {
+// --- Periodic & Initial Polling ------------------------------------------------
+async function pollAllStates() {
   if (!unifiClient) return;
 
   try {
-    // Poll clients presence
+    // 1. Poll active clients presence
     const activeClients = await unifiClient.getClients();
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
@@ -179,11 +179,38 @@ gladys.onPoll(async () => {
       }
     }
 
-    // Poll Gateway WAN metrics
+    // Also fetch known clients to initialize inactive ones to 0 (Absence)
+    try {
+      const knownClients = await unifiClient.getKnownClients();
+      for (const kClient of knownClients) {
+        if (!kClient.mac) continue;
+        const mac = kClient.mac.toLowerCase();
+        if (!activeMacs.has(mac) && !knownPresenceStates.has(mac)) {
+          knownPresenceStates.set(mac, 0);
+          const featureId = gladys.externalId(`client:${mac}:presence`);
+          await gladys.publishState(featureId, 0).catch(() => {});
+        }
+      }
+    } catch {
+      // Ignore if getKnownClients fails
+    }
+
+    // 2. Poll Infrastructure devices (Gateways, APs, Switches)
     const devices = await unifiClient.getDevices();
     for (const dev of devices) {
-      if (dev.type === 'ugw' || dev.type === 'udm' || (dev.model && dev.model.includes('UCG'))) {
-        const mac = dev.mac.toLowerCase();
+      if (!dev.mac) continue;
+      const mac = dev.mac.toLowerCase();
+      const isGateway =
+        dev.type === 'ugw' ||
+        dev.type === 'udm' ||
+        dev.type === 'ucg' ||
+        (dev.model && dev.model.toUpperCase().includes('UCG'));
+
+      // Publish Status for ALL infrastructure devices (U6+, U6 Pro, Switches, Gateways)
+      const statusFeatureId = gladys.externalId(`gateway:${mac}:status`);
+      await gladys.publishState(statusFeatureId, dev.state === 1 ? 1 : 0).catch(() => {});
+
+      if (isGateway) {
         const wanStats = dev.stat || {};
         const rxSpeedMbps = Math.round(((wanStats.wan_rx_bytes_r || 0) * 8) / 1000000);
         const txSpeedMbps = Math.round(((wanStats.wan_tx_bytes_r || 0) * 8) / 1000000);
@@ -194,14 +221,15 @@ gladys.onPoll(async () => {
         await gladys
           .publishState(gladys.externalId(`gateway:${mac}:wan-up`), txSpeedMbps)
           .catch(() => {});
-        await gladys
-          .publishState(gladys.externalId(`gateway:${mac}:status`), dev.state === 1 ? 1 : 0)
-          .catch(() => {});
       }
     }
   } catch (err) {
     logger.debug('Polling UniFi state error:', err.message);
   }
+}
+
+gladys.onPoll(async () => {
+  await pollAllStates();
 });
 
 // --- Manifest Action (Test Connection) ---------------------------------------
@@ -216,6 +244,7 @@ gladys.onConfigUpdated(async (newConfig) => {
   await initUniFiConnection();
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
   await gladys.publishDiscoveredDevices(devices);
+  await pollAllStates();
 });
 
 // --- Lifecycle Connection ----------------------------------------------------
@@ -225,6 +254,7 @@ gladys.on('connected', async () => {
     await initUniFiConnection();
     const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
     await gladys.publishDiscoveredDevices(devices);
+    await pollAllStates();
   } catch (err) {
     logger.error('Post-connection initialization failed:', err);
   }

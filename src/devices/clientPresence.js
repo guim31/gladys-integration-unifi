@@ -28,7 +28,7 @@ export const clientPresenceBlueprint = {
           selector: `${deviceSelector}-presence`,
           external_id: ids.feature('presence'),
           category: DEVICE_FEATURE_CATEGORIES.PRESENCE_SENSOR,
-          type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+          type: DEVICE_FEATURE_TYPES.SENSOR.PUSH,
           min: 0,
           max: 1,
           read_only: true,

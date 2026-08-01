@@ -31,7 +31,7 @@ export const gatewayBlueprint = {
         selector: `${deviceSelector}-status`,
         external_id: ids.feature('status'),
         category: DEVICE_FEATURE_CATEGORIES.PRESENCE_SENSOR,
-        type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+        type: DEVICE_FEATURE_TYPES.SENSOR.PUSH,
         min: 0,
         max: 1,
         read_only: true,
