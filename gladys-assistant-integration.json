@@ -6,8 +6,8 @@
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
     "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
-  "version": "1.1.2",
-  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.1.2",
+  "version": "1.2.0",
+  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.2.0",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
@@ -15,10 +15,10 @@
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Local UniFi OS Connection", "fr": "Connexion Locale UniFi OS" },
+      "label": { "en": "Local UniFi Connection", "fr": "Connexion Locale UniFi OS" },
       "description": {
-        "en": "Enter the IP address and local administrator credentials of your UniFi console (UCG Fiber, UDM, Cloud Key).",
-        "fr": "Entrez l'adresse IP et les identifiants d'un administrateur local de votre console UniFi (UCG Fiber, UDM, Cloud Key)."
+        "en": "Select your authentication mode and enter your local UniFi credentials or local API key.",
+        "fr": "Sélectionnez le mode d'authentification et entrez vos identifiants locaux UniFi ou votre clé API locale."
       }
     },
     {
@@ -42,21 +42,53 @@
       "max": 65535
     },
     {
+      "key": "unifi_auth_type",
+      "type": "select",
+      "label": { "en": "Authentication Mode", "fr": "Mode d'authentification" },
+      "required": true,
+      "default": "api_key",
+      "options": [
+        {
+          "value": "api_key",
+          "label": {
+            "en": "Local API Key (UniFi Network > Integrations - Recommended)",
+            "fr": "Clé API Locale (UniFi Network > Intégrations - Recommandé)"
+          }
+        },
+        {
+          "value": "credentials",
+          "label": {
+            "en": "Local Username & Password",
+            "fr": "Nom d'utilisateur & Mot de passe local"
+          }
+        }
+      ]
+    },
+    {
+      "key": "unifi_api_key",
+      "type": "secret",
+      "label": { "en": "Local API Key", "fr": "Clé API Locale" },
+      "description": {
+        "en": "API Key generated in UniFi Network > Integrations.",
+        "fr": "Clé API générée dans UniFi Network > Intégrations."
+      },
+      "required": false
+    },
+    {
       "key": "unifi_username",
       "type": "string",
       "label": { "en": "Local Username", "fr": "Nom d'utilisateur local" },
       "description": {
-        "en": "Local UniFi admin account created in Console > Users & Admins.",
-        "fr": "Compte admin local créé dans Console > Utilisateurs & Admins."
+        "en": "Local admin username created in Console > Users & Admins (required if Credentials mode selected).",
+        "fr": "Nom d'admin local créé dans Console > Utilisateurs & Admins (requis si mode Identifiants)."
       },
-      "required": true,
-      "default": ""
+      "required": false
     },
     {
       "key": "unifi_password",
       "type": "secret",
       "label": { "en": "Local Password", "fr": "Mot de passe local" },
-      "required": true
+      "required": false
     },
     {
       "key": "unifi_site_id",

@@ -3,7 +3,8 @@ import https from 'node:https';
 import { logger } from '@gladysassistant/integration-sdk';
 
 /**
- * UniFi Network API Client supporting local Username/Password session authentication.
+ * UniFi Network API Client supporting both local API Key (UniFi Network > Integrations)
+ * and Username/Password session authentication.
  */
 export class UniFiClient {
   constructor(config) {
@@ -29,28 +30,36 @@ export class UniFiClient {
   }
 
   /**
-   * Get default HTTP headers.
+   * Get default HTTP headers according to auth type.
    */
   getHeaders() {
     const headers = {};
-    if (this.cookies.length > 0) {
+    if (this.config.unifi_auth_type === 'api_key' && this.config.unifi_api_key) {
+      headers['X-API-KEY'] = this.config.unifi_api_key;
+      headers['X-API-Key'] = this.config.unifi_api_key;
+      headers['x-api-key'] = this.config.unifi_api_key;
+    } else if (this.cookies.length > 0) {
       headers.Cookie = this.cookies.join('; ');
     }
     return headers;
   }
 
   /**
-   * Authenticate using username and password.
+   * Authenticate using username and password (for legacy/credentials mode).
    */
   async login() {
+    if (this.config.unifi_auth_type === 'api_key') {
+      this.isLoggedIn = true;
+      return true;
+    }
+
     const { unifi_username, unifi_password } = this.config;
     if (!unifi_username || !unifi_password) {
-      throw new Error('Nom d’utilisateur et mot de passe local requis.');
+      throw new Error('Nom d’utilisateur et mot de passe local requis en mode identifiants.');
     }
 
     logger.debug(`Authenticating to UniFi at ${this.config.unifi_host}...`);
 
-    // Try UniFi OS login endpoint first (/api/auth/login), fallback to legacy (/api/login)
     const loginEndpoints = ['/api/auth/login', '/api/login'];
     let lastError = null;
 
@@ -96,7 +105,6 @@ export class UniFiClient {
       const fullPath = path.replace('{site}', site);
       const headers = this.getHeaders();
 
-      // Test /proxy/network first for UniFi OS consoles (UCG, UDM), fallback to direct path
       try {
         const res = await this.axios.request({
           method,
@@ -122,7 +130,11 @@ export class UniFiClient {
     try {
       return await makeReq();
     } catch (err) {
-      if (err.response && err.response.status === 401) {
+      if (
+        err.response &&
+        err.response.status === 401 &&
+        this.config.unifi_auth_type !== 'api_key'
+      ) {
         logger.debug('UniFi session expired, re-authenticating...');
         await this.login();
         return await makeReq();
@@ -135,12 +147,29 @@ export class UniFiClient {
    * Test connection credentials.
    */
   async testConnection() {
-    await this.login();
-    const health = await this.getHealth();
-    return {
-      success: true,
-      message: `Connexion réussie à UniFi Network (${health?.data?.length || 0} sous-système(s) actifs).`,
-    };
+    if (this.config.unifi_auth_type === 'credentials') {
+      await this.login();
+    } else if (!this.config.unifi_api_key) {
+      throw new Error('Veuillez renseigner votre Clé API Locale dans la configuration.');
+    }
+
+    try {
+      const health = await this.getHealth();
+      return {
+        success: true,
+        message: `Connexion réussie à UniFi Network (${health?.data?.length || 0} sous-système(s) actifs).`,
+      };
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        if (this.config.unifi_auth_type === 'api_key') {
+          throw new Error(
+            'Erreur 401 (Non autorisé) : La clé API est refusée par UniFi OS. Assurez-vous d’avoir copié la clé générée dans UniFi Network > Integrations.',
+          );
+        }
+        throw new Error('Erreur 401 (Non autorisé) : Nom d’utilisateur ou mot de passe incorrect.');
+      }
+      throw err;
+    }
   }
 
   /**

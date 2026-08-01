@@ -5,6 +5,8 @@
 export const DEFAULT_CONFIG = {
   unifi_host: '192.168.1.1',
   unifi_port: 443,
+  unifi_auth_type: 'api_key',
+  unifi_api_key: '',
   unifi_username: '',
   unifi_password: '',
   unifi_site_id: 'default',
@@ -22,6 +24,8 @@ export function normalizeConfig(raw = {}) {
     ...raw,
     unifi_host: String(raw.unifi_host ?? DEFAULT_CONFIG.unifi_host).trim(),
     unifi_port: Number(raw.unifi_port ?? DEFAULT_CONFIG.unifi_port),
+    unifi_auth_type: String(raw.unifi_auth_type ?? DEFAULT_CONFIG.unifi_auth_type).trim(),
+    unifi_api_key: String(raw.unifi_api_key ?? DEFAULT_CONFIG.unifi_api_key).trim(),
     unifi_username: String(raw.unifi_username ?? DEFAULT_CONFIG.unifi_username).trim(),
     unifi_password: String(raw.unifi_password ?? DEFAULT_CONFIG.unifi_password),
     unifi_site_id: String(raw.unifi_site_id ?? DEFAULT_CONFIG.unifi_site_id).trim() || 'default',
