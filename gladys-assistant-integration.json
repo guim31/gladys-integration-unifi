@@ -6,8 +6,8 @@
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
     "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
-  "version": "1.4.0",
-  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.4.0",
+  "version": "1.4.1",
+  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.4.1",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
