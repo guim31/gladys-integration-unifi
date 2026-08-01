@@ -5,7 +5,7 @@ import {
 } from '@gladysassistant/integration-sdk';
 
 /**
- * Blueprint for UniFi Gateway (UCG Fiber / UDM / USG).
+ * Blueprint for UniFi Infrastructure Devices (UCG Fiber / UDM / USG / Switches / APs).
  */
 export const gatewayBlueprint = {
   key: 'gateway',
@@ -17,12 +17,27 @@ export const gatewayBlueprint = {
   buildDevice(gladys, unifiDevice) {
     const mac = unifiDevice.mac.toLowerCase();
     const ids = gladys.externalIds('gateway', mac);
+    const isGateway =
+      unifiDevice.type === 'ugw' ||
+      unifiDevice.type === 'udm' ||
+      unifiDevice.type === 'ucg' ||
+      (unifiDevice.model && unifiDevice.model.toUpperCase().includes('UCG'));
 
-    return {
-      name: unifiDevice.name || unifiDevice.model || 'UniFi Gateway',
-      external_id: ids.device,
-      model: unifiDevice.model || 'UCG-Fiber',
-      features: [
+    const features = [
+      {
+        name: 'Status',
+        external_id: ids.feature('status'),
+        category: DEVICE_FEATURE_CATEGORIES.SENSOR,
+        type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+        min: 0,
+        max: 1,
+        read_only: true,
+        keep_history: true,
+      },
+    ];
+
+    if (isGateway) {
+      features.push(
         {
           name: 'WAN Upload Speed',
           external_id: ids.feature('wan-up'),
@@ -45,17 +60,14 @@ export const gatewayBlueprint = {
           read_only: true,
           keep_history: true,
         },
-        {
-          name: 'Status',
-          external_id: ids.feature('status'),
-          category: DEVICE_FEATURE_CATEGORIES.SENSOR,
-          type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
-          min: 0,
-          max: 1,
-          read_only: true,
-          keep_history: true,
-        },
-      ],
+      );
+    }
+
+    return {
+      name: unifiDevice.name || unifiDevice.model || 'UniFi Device',
+      external_id: ids.device,
+      model: unifiDevice.model || 'UniFi Hardware',
+      features,
     };
   },
 };

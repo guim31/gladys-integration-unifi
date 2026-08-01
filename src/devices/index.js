@@ -24,44 +24,66 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
     return [];
   }
 
+  // Ensure client is logged in before scan
+  if (!unifiClient.isLoggedIn) {
+    try {
+      await unifiClient.login();
+    } catch (err) {
+      logger.error('Failed to log in during UniFi discovery scan:', err.message);
+      return [];
+    }
+  }
+
   const discovered = [];
+  const addedMacs = new Set();
 
   try {
-    // 1. Gateways, Switches & Access Points
+    // 1. Infrastructure Devices (Gateways, Switches & Access Points)
     const devices = await unifiClient.getDevices();
+    logger.info(`UniFi getDevices returned ${devices.length} infrastructure device(s).`);
     for (const dev of devices) {
-      // Is Gateway (UCG, UDM, USG)
-      if (dev.type === 'ugw' || dev.type === 'udm' || (dev.model && dev.model.includes('UCG'))) {
+      if (dev.mac) {
         discovered.push(gatewayBlueprint.buildDevice(gladys, dev));
-      }
+        addedMacs.add(dev.mac.toLowerCase());
 
-      // PoE ports on Switches/Gateways
-      if (Array.isArray(dev.port_table)) {
-        for (const port of dev.port_table) {
-          if (port.poe_caps && port.poe_caps > 0) {
-            discovered.push(poePortBlueprint.buildDevice(gladys, dev, port));
+        // PoE ports on Switches/Gateways
+        if (Array.isArray(dev.port_table)) {
+          for (const port of dev.port_table) {
+            if (port.poe_caps && port.poe_caps > 0) {
+              discovered.push(poePortBlueprint.buildDevice(gladys, dev, port));
+            }
           }
         }
       }
     }
 
-    // 2. Connected Network Clients (Device Tracker & Internet Switch)
-    const clients = await unifiClient.getClients();
-    for (const client of clients) {
-      if (client.mac) {
+    // 2. Network Clients (Active Connected & Known Devices)
+    const activeClients = await unifiClient.getClients();
+    const knownClients = await unifiClient.getKnownClients();
+    logger.info(
+      `UniFi getClients returned ${activeClients.length} active client(s), getKnownClients returned ${knownClients.length} known client(s).`,
+    );
+
+    const allClients = [...activeClients, ...knownClients];
+    for (const client of allClients) {
+      if (client.mac && !addedMacs.has(client.mac.toLowerCase())) {
+        addedMacs.add(client.mac.toLowerCase());
         discovered.push(clientPresenceBlueprint.buildDevice(gladys, client));
       }
     }
 
     // 3. Wi-Fi SSID Networks
     const wlans = await unifiClient.getWlans();
+    logger.info(`UniFi getWlans returned ${wlans.length} wlan(s).`);
     for (const wlan of wlans) {
       discovered.push(wifiNetworkBlueprint.buildDevice(gladys, wlan));
     }
 
-    logger.info(`UniFi Discovery completed: ${discovered.length} device(s) found.`);
+    logger.info(
+      `UniFi Discovery scan completed successfully: ${discovered.length} device(s) found.`,
+    );
   } catch (err) {
-    logger.error('Error during UniFi discovery scan:', err.message);
+    logger.error('Error during UniFi discovery scan:', err.message, err);
   }
 
   return discovered;
@@ -72,22 +94,12 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
  */
 export async function handleTestConnectionAction(gladys, unifiClient) {
   if (!unifiClient) {
-    return {
-      en: 'UniFi client is not initialized. Check host configuration.',
-      fr: "Le client UniFi n'est pas initialisé. Vérifiez la configuration.",
-    };
+    throw new Error('Le client UniFi n’est pas initialisé. Veuillez enregistrer la configuration.');
   }
 
-  try {
-    const res = await unifiClient.testConnection();
-    return {
-      en: res.message,
-      fr: `Connexion réussie à UniFi Network ! (${res.message})`,
-    };
-  } catch (err) {
-    return {
-      en: `Connection failed: ${err.message}`,
-      fr: `Échec de la connexion : ${err.message}`,
-    };
-  }
+  const res = await unifiClient.testConnection();
+  return {
+    en: res.message,
+    fr: res.message,
+  };
 }
