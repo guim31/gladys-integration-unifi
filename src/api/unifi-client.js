@@ -36,6 +36,8 @@ export class UniFiClient {
     const headers = {};
     if (this.config.unifi_auth_type === 'api_key' && this.config.unifi_api_key) {
       headers['X-API-KEY'] = this.config.unifi_api_key;
+      headers['X-API-Key'] = this.config.unifi_api_key;
+      headers['x-api-key'] = this.config.unifi_api_key;
     } else if (this.cookies.length > 0) {
       headers.Cookie = this.cookies.join('; ');
     }
@@ -52,7 +54,7 @@ export class UniFiClient {
 
     const { unifi_username, unifi_password } = this.config;
     if (!unifi_username || !unifi_password) {
-      throw new Error('Username and password are required for credentials authentication mode.');
+      throw new Error('Nom d’utilisateur et mot de passe requis en mode identifiants.');
     }
 
     logger.debug(`Authenticating to UniFi at ${this.config.unifi_host}...`);
@@ -86,7 +88,9 @@ export class UniFiClient {
     }
 
     throw new Error(
-      `UniFi login failed: ${lastError?.response?.data?.message || lastError?.message || 'Unknown error'}`,
+      `Échec d'authentification UniFi (HTTP ${lastError?.response?.status || 'Erreur'}) : ${
+        lastError?.response?.data?.message || lastError?.message || 'Identifiants invalides'
+      }`,
     );
   }
 
@@ -94,15 +98,12 @@ export class UniFiClient {
    * Execute API request with automatic retry on 401 for credentials auth.
    */
   async request(method, path, data = null) {
-    // Try request
     const makeReq = async () => {
-      // UniFi OS proxies Network endpoints under /proxy/network/api/s/{site} or /api/s/{site}
-      // We test /proxy/network first for UniFi OS consoles (UCG, UDM), fallback to /api/
       const site = this.config.unifi_site_id || 'default';
-      let fullPath = path.replace('{site}', site);
-
+      const fullPath = path.replace('{site}', site);
       const headers = this.getHeaders();
 
+      // We test /proxy/network first for UniFi OS consoles (UCG, UDM), fallback to direct path
       try {
         const res = await this.axios.request({
           method,
@@ -113,7 +114,6 @@ export class UniFiClient {
         return res.data;
       } catch (err) {
         if (err.response && (err.response.status === 404 || err.response.status === 405)) {
-          // Direct controller path fallback
           const res = await this.axios.request({
             method,
             url: fullPath,
@@ -148,12 +148,27 @@ export class UniFiClient {
   async testConnection() {
     if (this.config.unifi_auth_type === 'credentials') {
       await this.login();
+    } else if (!this.config.unifi_api_key) {
+      throw new Error('Veuillez renseigner une Clé API Locale dans la configuration.');
     }
-    const health = await this.getHealth();
-    return {
-      success: true,
-      message: `Successfully connected to UniFi Network (${health?.data?.length || 0} subsystem(s) active).`,
-    };
+
+    try {
+      const health = await this.getHealth();
+      return {
+        success: true,
+        message: `Connexion réussie à UniFi Network (${health?.data?.length || 0} sous-système(s) actifs).`,
+      };
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        if (this.config.unifi_auth_type === 'api_key') {
+          throw new Error(
+            'Erreur 401 (Non autorisé) : La clé API est refusée par UniFi OS. Vérifiez que la clé a été créée directement sur votre console locale (Paramètres > Système > Intégrations). Si le problème persiste, utilisez le mode "Nom d’utilisateur & Mot de passe local".',
+          );
+        }
+        throw new Error('Erreur 401 (Non autorisé) : Nom d’utilisateur ou mot de passe incorrect.');
+      }
+      throw err;
+    }
   }
 
   /**
