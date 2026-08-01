@@ -171,7 +171,9 @@ gladys.onSetValue(async (device, feature, value) => {
     const parts = extId.split(':');
     const wlanId = parts[parts.indexOf('wifi') + 1];
     try {
-      logger.info(`[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`);
+      logger.info(
+        `[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`,
+      );
       const res = await unifiClient.setWlanState(wlanId, value === 1);
       logger.info(`[UniFi Action Response] Wi-Fi WLAN ${wlanId}:`, res);
       await gladys.publishState(feature.external_id, value);
@@ -193,7 +195,9 @@ gladys.onSetValue(async (device, feature, value) => {
     const mode = value === 1 ? 'auto' : 'off';
     try {
       logger.info(`[UniFi Action] Setting PoE port ${portIdx} on switch ${deviceMac} = ${mode}`);
-      const res = await unifiClient.setPortPoeMode(deviceMac, [{ port_idx: portIdx, poe_mode: mode }]);
+      const res = await unifiClient.setPortPoeMode(deviceMac, [
+        { port_idx: portIdx, poe_mode: mode },
+      ]);
       logger.info(`[UniFi Action Response] PoE port ${portIdx} on ${deviceMac}:`, res);
       await gladys.publishState(feature.external_id, value);
     } catch (err) {
