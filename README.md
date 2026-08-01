@@ -48,7 +48,7 @@ From the Gladys Assistant interface:
 
 ```bash
 # Clone the repository
-git clone https://github.com/guim3/gladys-integration-unifi.git
+git clone https://github.com/guim31/gladys-integration-unifi.git
 cd gladys-integration-unifi
 
 # Install dependencies
