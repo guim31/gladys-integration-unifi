@@ -17,14 +17,14 @@ export const wifiNetworkBlueprint = {
     const ids = gladys.externalIds('wifi', wlanId);
 
     return {
-      name: `Wi-Fi SSID: ${wlan.name || 'SSID'}`,
+      name: `Réseau Wi-Fi : ${wlan.name || 'SSID'}`,
       selector: deviceSelector,
       external_id: ids.device,
-      model: 'Wi-Fi Network (SSID)',
+      model: 'Réseau Wi-Fi (SSID)',
       poll_frequency: 60000,
       features: [
         {
-          name: 'Wi-Fi State',
+          name: 'État Wi-Fi',
           selector: `${deviceSelector}-state`,
           external_id: ids.feature('state'),
           category: DEVICE_FEATURE_CATEGORIES.SWITCH,

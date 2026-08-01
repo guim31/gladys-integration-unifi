@@ -121,14 +121,30 @@ gladys.onSetValue(async (device, feature, value) => {
 
   const extId = feature.external_id;
 
-  // 1. Internet Block switch (unifi:client:<mac>:block)
-  if (extId.includes(':client:') && extId.endsWith(':block')) {
+  // 1. Internet Access switch (unifi:client-internet:<mac>:access OR unifi:client:<mac>:block)
+  if (
+    (extId.includes(':client-internet:') && extId.endsWith(':access')) ||
+    (extId.includes(':client:') && extId.endsWith(':block'))
+  ) {
     const parts = extId.split(':');
-    const mac = parts[parts.indexOf('client') + 1];
-    if (value === 1) {
-      await unifiClient.blockClient(mac);
+    const isAccess = extId.endsWith(':access');
+    const macIndex = parts.indexOf(isAccess ? 'client-internet' : 'client') + 1;
+    const mac = parts[macIndex];
+
+    if (isAccess) {
+      // 1 = Access Authorized (Unblocked), 0 = Access Cut (Blocked)
+      if (value === 1) {
+        await unifiClient.unblockClient(mac);
+      } else {
+        await unifiClient.blockClient(mac);
+      }
     } else {
-      await unifiClient.unblockClient(mac);
+      // Legacy block switch: 1 = Blocked, 0 = Unblocked
+      if (value === 1) {
+        await unifiClient.blockClient(mac);
+      } else {
+        await unifiClient.unblockClient(mac);
+      }
     }
     await gladys.publishState(feature.external_id, value);
     return;
@@ -175,7 +191,7 @@ async function pollAllStates() {
   isPolling = true;
 
   try {
-    // 1. Poll active clients presence
+    // 1. Poll active clients presence & internet access
     const activeClients = await unifiClient.getClients();
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
@@ -183,6 +199,9 @@ async function pollAllStates() {
       if (!client.mac) continue;
       const mac = client.mac.toLowerCase();
       await updateClientPresence(mac, 1);
+
+      const internetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
+      await gladys.publishState(internetFeatureId, client.blocked ? 0 : 1).catch(() => {});
     }
 
     // 2. Poll known clients to publish 0 for inactive ones
@@ -191,6 +210,10 @@ async function pollAllStates() {
       for (const kClient of knownClients) {
         if (!kClient.mac) continue;
         const mac = kClient.mac.toLowerCase();
+
+        const internetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
+        await gladys.publishState(internetFeatureId, kClient.blocked ? 0 : 1).catch(() => {});
+
         if (!activeMacs.has(mac)) {
           if (!presenceTimers.has(mac)) {
             knownPresenceStates.set(mac, 0);

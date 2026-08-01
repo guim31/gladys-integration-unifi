@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
 import { gatewayBlueprint } from '../src/devices/gateway.js';
-import { clientPresenceBlueprint } from '../src/devices/clientPresence.js';
+import { clientPresenceBlueprint, clientInternetBlueprint } from '../src/devices/clientPresence.js';
 import { poePortBlueprint } from '../src/devices/poePort.js';
 import { wifiNetworkBlueprint } from '../src/devices/wifiNetwork.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -32,7 +32,7 @@ test('gatewayBlueprint formats device payload correctly', () => {
   assert.equal(typeof device.selector, 'string');
 });
 
-test('clientPresenceBlueprint formats presence & block features', () => {
+test('clientPresenceBlueprint formats presence feature', () => {
   const mockClient = {
     mac: 'aa:bb:cc:dd:ee:ff',
     name: 'Thomas Smartphone',
@@ -43,7 +43,25 @@ test('clientPresenceBlueprint formats presence & block features', () => {
   const device = clientPresenceBlueprint.buildDevice(gladys, mockClient);
   assert.equal(device.name, 'Thomas Smartphone');
   assert.equal(device.external_id, gladys.externalIds('client', 'aa:bb:cc:dd:ee:ff').device);
-  assert.equal(device.features.length, 2);
+  assert.equal(device.features.length, 1);
+  assert.equal(typeof device.selector, 'string');
+});
+
+test('clientInternetBlueprint formats internet access switch feature', () => {
+  const mockClient = {
+    mac: 'aa:bb:cc:dd:ee:ff',
+    name: 'Thomas Smartphone',
+    hostname: 'iPhone',
+    is_guest: false,
+  };
+
+  const device = clientInternetBlueprint.buildDevice(gladys, mockClient);
+  assert.equal(device.name, 'Accès Internet : Thomas Smartphone');
+  assert.equal(
+    device.external_id,
+    gladys.externalIds('client-internet', 'aa:bb:cc:dd:ee:ff').device,
+  );
+  assert.equal(device.features.length, 1);
   assert.equal(typeof device.selector, 'string');
 });
 
@@ -58,7 +76,7 @@ test('poePortBlueprint formats switch PoE port correctly', () => {
   };
 
   const device = poePortBlueprint.buildDevice(gladys, mockSwitch, mockPort);
-  assert.equal(device.name, 'Switch Port 1 (Port 1 Camera)');
+  assert.equal(device.name, 'Port PoE : Port 1 Camera');
   assert.equal(
     device.external_id,
     gladys.externalIds('poe-port', '11:22:33:44:55:66:port:1').device,
@@ -74,7 +92,7 @@ test('wifiNetworkBlueprint formats SSID device correctly', () => {
   };
 
   const device = wifiNetworkBlueprint.buildDevice(gladys, mockWlan);
-  assert.equal(device.name, 'Wi-Fi SSID: Wi-Fi Guest');
+  assert.equal(device.name, 'Réseau Wi-Fi : Wi-Fi Guest');
   assert.equal(device.external_id, gladys.externalIds('wifi', 'wlan_12345').device);
   assert.equal(device.features.length, 1);
   assert.equal(typeof device.selector, 'string');

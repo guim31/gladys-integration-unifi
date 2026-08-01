@@ -4,13 +4,14 @@
 
 import { logger } from '@gladysassistant/integration-sdk';
 import { gatewayBlueprint } from './gateway.js';
-import { clientPresenceBlueprint } from './clientPresence.js';
+import { clientPresenceBlueprint, clientInternetBlueprint } from './clientPresence.js';
 import { poePortBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
 export const DEVICE_BLUEPRINTS = [
   gatewayBlueprint,
   clientPresenceBlueprint,
+  clientInternetBlueprint,
   poePortBlueprint,
   wifiNetworkBlueprint,
 ];
@@ -57,7 +58,7 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
       }
     }
 
-    // 2. Network Clients (Active Connected & Known Devices)
+    // 2. Network Clients (Presence Trackers & Internet Access Switches)
     const activeClients = await unifiClient.getClients();
     const knownClients = await unifiClient.getKnownClients();
     logger.info(
@@ -69,6 +70,7 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
       if (client.mac && !addedMacs.has(client.mac.toLowerCase())) {
         addedMacs.add(client.mac.toLowerCase());
         discovered.push(clientPresenceBlueprint.buildDevice(gladys, client));
+        discovered.push(clientInternetBlueprint.buildDevice(gladys, client));
       }
     }
 

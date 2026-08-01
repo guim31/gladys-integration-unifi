@@ -21,14 +21,14 @@ export const poePortBlueprint = {
     const ids = gladys.externalIds('poe-port', key);
 
     return {
-      name: `Switch Port ${portIdx} (${port.name || 'PoE'})`,
+      name: `Port PoE : ${port.name || 'Port ' + portIdx}`,
       selector: deviceSelector,
       external_id: ids.device,
-      model: 'PoE Switch Port',
+      model: 'Port PoE Switch',
       poll_frequency: 60000,
       features: [
         {
-          name: 'PoE Power',
+          name: 'Alimentation PoE',
           selector: `${deviceSelector}-power`,
           external_id: ids.feature('poe-power'),
           category: DEVICE_FEATURE_CATEGORIES.SWITCH,
