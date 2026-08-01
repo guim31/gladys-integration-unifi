@@ -6,8 +6,8 @@
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
     "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
   },
-  "version": "1.2.5",
-  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.2.5",
+  "version": "1.2.6",
+  "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.2.6",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
@@ -72,6 +72,9 @@
         "en": "API Key generated in UniFi Network > Integrations.",
         "fr": "Clé API générée dans UniFi Network > Intégrations."
       },
+      "display_if": {
+        "unifi_auth_type": "api_key"
+      },
       "required": false
     },
     {
@@ -82,12 +85,18 @@
         "en": "Local admin username created in Console > Users & Admins (required if Credentials mode selected).",
         "fr": "Nom d'admin local créé dans Console > Utilisateurs & Admins (requis si mode Identifiants)."
       },
+      "display_if": {
+        "unifi_auth_type": "credentials"
+      },
       "required": false
     },
     {
       "key": "unifi_password",
       "type": "secret",
       "label": { "en": "Local Password", "fr": "Mot de passe local" },
+      "display_if": {
+        "unifi_auth_type": "credentials"
+      },
       "required": false
     },
     {
