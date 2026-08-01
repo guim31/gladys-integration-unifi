@@ -32,6 +32,7 @@ export const clientPresenceBlueprint = {
           min: 0,
           max: 1,
           read_only: true,
+          has_feedback: false,
           keep_history: true,
         },
         {
