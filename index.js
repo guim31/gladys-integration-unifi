@@ -131,22 +131,38 @@ gladys.onSetValue(async (device, feature, value) => {
     const macIndex = parts.indexOf(isAccess ? 'client-internet' : 'client') + 1;
     const mac = parts[macIndex];
 
-    if (isAccess) {
-      // 1 = Access Authorized (Unblocked), 0 = Access Cut (Blocked)
-      if (value === 1) {
-        await unifiClient.unblockClient(mac);
+    try {
+      if (isAccess) {
+        // 1 = Access Authorized (Unblocked), 0 = Access Cut (Blocked)
+        if (value === 1) {
+          logger.info(`[UniFi Action] Unblocking internet access for MAC ${mac}`);
+          const res = await unifiClient.unblockClient(mac);
+          logger.info(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
+        } else {
+          logger.info(`[UniFi Action] Blocking internet access for MAC ${mac}`);
+          const res = await unifiClient.blockClient(mac);
+          logger.info(`[UniFi Action Response] Block MAC ${mac}:`, res);
+        }
       } else {
-        await unifiClient.blockClient(mac);
+        // Legacy block switch: 1 = Blocked, 0 = Unblocked
+        if (value === 1) {
+          logger.info(`[UniFi Action] Blocking internet access (legacy) for MAC ${mac}`);
+          const res = await unifiClient.blockClient(mac);
+          logger.info(`[UniFi Action Response] Block MAC ${mac}:`, res);
+        } else {
+          logger.info(`[UniFi Action] Unblocking internet access (legacy) for MAC ${mac}`);
+          const res = await unifiClient.unblockClient(mac);
+          logger.info(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
+        }
       }
-    } else {
-      // Legacy block switch: 1 = Blocked, 0 = Unblocked
-      if (value === 1) {
-        await unifiClient.blockClient(mac);
-      } else {
-        await unifiClient.unblockClient(mac);
-      }
+      await gladys.publishState(feature.external_id, value);
+    } catch (err) {
+      logger.error(
+        `[UniFi Action Error] Failed to change internet access state for MAC ${mac}:`,
+        err?.response?.data || err.message,
+      );
+      throw err;
     }
-    await gladys.publishState(feature.external_id, value);
     return;
   }
 
@@ -154,8 +170,18 @@ gladys.onSetValue(async (device, feature, value) => {
   if (extId.includes(':wifi:') && extId.endsWith(':state')) {
     const parts = extId.split(':');
     const wlanId = parts[parts.indexOf('wifi') + 1];
-    await unifiClient.setWlanState(wlanId, value === 1);
-    await gladys.publishState(feature.external_id, value);
+    try {
+      logger.info(`[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`);
+      const res = await unifiClient.setWlanState(wlanId, value === 1);
+      logger.info(`[UniFi Action Response] Wi-Fi WLAN ${wlanId}:`, res);
+      await gladys.publishState(feature.external_id, value);
+    } catch (err) {
+      logger.error(
+        `[UniFi Action Error] Failed to set Wi-Fi WLAN ${wlanId} state:`,
+        err?.response?.data || err.message,
+      );
+      throw err;
+    }
     return;
   }
 
@@ -164,10 +190,19 @@ gladys.onSetValue(async (device, feature, value) => {
     const parts = extId.split(':');
     const deviceMac = parts[parts.indexOf('poe') + 1];
     const portIdx = parseInt(parts[parts.indexOf('poe') + 2], 10);
-
     const mode = value === 1 ? 'auto' : 'off';
-    await unifiClient.setPortPoeMode(deviceMac, [{ port_idx: portIdx, poe_mode: mode }]);
-    await gladys.publishState(feature.external_id, value);
+    try {
+      logger.info(`[UniFi Action] Setting PoE port ${portIdx} on switch ${deviceMac} = ${mode}`);
+      const res = await unifiClient.setPortPoeMode(deviceMac, [{ port_idx: portIdx, poe_mode: mode }]);
+      logger.info(`[UniFi Action Response] PoE port ${portIdx} on ${deviceMac}:`, res);
+      await gladys.publishState(feature.external_id, value);
+    } catch (err) {
+      logger.error(
+        `[UniFi Action Error] Failed to set PoE mode on ${deviceMac} port ${portIdx}:`,
+        err?.response?.data || err.message,
+      );
+      throw err;
+    }
     return;
   }
 
@@ -191,7 +226,7 @@ async function pollAllStates() {
   isPolling = true;
 
   try {
-    // 1. Poll active clients presence & internet access
+    // 1. Poll active clients presence
     const activeClients = await unifiClient.getClients();
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
@@ -199,20 +234,18 @@ async function pollAllStates() {
       if (!client.mac) continue;
       const mac = client.mac.toLowerCase();
       await updateClientPresence(mac, 1);
-
-      const internetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
-      await gladys.publishState(internetFeatureId, client.blocked ? 0 : 1).catch(() => {});
     }
 
-    // 2. Poll known clients to publish 0 for inactive ones
+    // 2. Poll known clients for authoritative internet access (blocked state) & offline presence
     try {
       const knownClients = await unifiClient.getKnownClients();
       for (const kClient of knownClients) {
         if (!kClient.mac) continue;
         const mac = kClient.mac.toLowerCase();
 
+        const isBlocked = Boolean(kClient.blocked);
         const internetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
-        await gladys.publishState(internetFeatureId, kClient.blocked ? 0 : 1).catch(() => {});
+        await gladys.publishState(internetFeatureId, isBlocked ? 0 : 1).catch(() => {});
 
         if (!activeMacs.has(mac)) {
           if (!presenceTimers.has(mac)) {
