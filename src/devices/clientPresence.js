@@ -1,6 +1,38 @@
 import { DEVICE_FEATURE_CATEGORIES, DEVICE_FEATURE_TYPES } from '@gladysassistant/integration-sdk';
 
 /**
+ * Helper to build clean, descriptive display name for network clients.
+ */
+export function getClientDisplayName(client) {
+  if (!client) return 'Appareil Inconnu';
+
+  const name = typeof client.name === 'string' ? client.name.trim() : '';
+  if (name) return name;
+
+  const hostname = typeof client.hostname === 'string' ? client.hostname.trim() : '';
+  if (hostname) return hostname;
+
+  const dhcpHostname = typeof client.dhcp_hostname === 'string' ? client.dhcp_hostname.trim() : '';
+  if (dhcpHostname) return dhcpHostname;
+
+  const ip = typeof client.ip === 'string' ? client.ip.trim() : '';
+  const oui = typeof client.oui === 'string' ? client.oui.trim() : '';
+  const mac = (client.mac || '').toLowerCase();
+  const shortMac = mac.length >= 5 ? mac.slice(-5) : mac;
+
+  if (oui && ip) {
+    return `${oui} (${ip})`;
+  }
+  if (oui) {
+    return `${oui} (${shortMac})`;
+  }
+  if (ip) {
+    return `Appareil ${ip} (${shortMac})`;
+  }
+  return `Appareil (${shortMac || 'Inconnu'})`;
+}
+
+/**
  * Blueprint for Network Client (Smartphone, PC, TV) presence tracker.
  */
 export const clientPresenceBlueprint = {
@@ -15,8 +47,7 @@ export const clientPresenceBlueprint = {
     const cleanMac = mac.replace(/[^a-z0-9]/g, '');
     const deviceSelector = `unifi-client-${cleanMac}`;
     const ids = gladys.externalIds('client', mac);
-    const displayName =
-      client.name || client.hostname || client.ip || `Appareil (${mac.slice(-5)})`;
+    const displayName = getClientDisplayName(client);
 
     return {
       name: displayName,
@@ -57,8 +88,7 @@ export const clientInternetBlueprint = {
     const cleanMac = mac.replace(/[^a-z0-9]/g, '');
     const deviceSelector = `unifi-client-internet-${cleanMac}`;
     const ids = gladys.externalIds('client-internet', mac);
-    const displayName =
-      client.name || client.hostname || client.ip || `Appareil (${mac.slice(-5)})`;
+    const displayName = getClientDisplayName(client);
 
     return {
       name: `Accès Internet : ${displayName}`,

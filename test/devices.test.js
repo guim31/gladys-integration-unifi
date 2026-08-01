@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
 import { gatewayBlueprint } from '../src/devices/gateway.js';
-import { clientPresenceBlueprint, clientInternetBlueprint } from '../src/devices/clientPresence.js';
+import {
+  clientPresenceBlueprint,
+  clientInternetBlueprint,
+  getClientDisplayName,
+} from '../src/devices/clientPresence.js';
 import { poePortBlueprint } from '../src/devices/poePort.js';
 import { wifiNetworkBlueprint } from '../src/devices/wifiNetwork.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -96,4 +100,27 @@ test('wifiNetworkBlueprint formats SSID device correctly', () => {
   assert.equal(device.external_id, gladys.externalIds('wifi', 'wlan_12345').device);
   assert.equal(device.features.length, 1);
   assert.equal(typeof device.selector, 'string');
+});
+
+test('getClientDisplayName formats vendor OUI and IP fallback when name is missing', () => {
+  const mockClientWithOuiIp = {
+    mac: '00:06:78:51:d6:f8',
+    oui: 'Apple',
+    ip: '192.168.100.12',
+  };
+  assert.equal(getClientDisplayName(mockClientWithOuiIp), 'Apple (192.168.100.12)');
+
+  const mockClientWithOuiOnly = {
+    mac: '48:b0:2d:6c:0f:57',
+    oui: 'Espressif',
+  };
+  assert.equal(getClientDisplayName(mockClientWithOuiOnly), 'Espressif (0f:57)');
+
+  const mockWhitespaceName = {
+    mac: '00:27:02:18:5d:7d',
+    name: '   ',
+    oui: 'Samsung',
+    ip: '192.168.100.45',
+  };
+  assert.equal(getClientDisplayName(mockWhitespaceName), 'Samsung (192.168.100.45)');
 });
