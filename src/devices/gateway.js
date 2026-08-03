@@ -3,9 +3,13 @@ import {
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
+import { buildPoePortFeatures } from './poePort.js';
 
 /**
  * Blueprint for UniFi Infrastructure Devices (UCG Fiber / UDM / USG / Switches / APs).
+ *
+ * One piece of hardware = one Gladys device: status, WAN metrics and PoE port
+ * switches all live on the same device.
  */
 export const gatewayBlueprint = {
   key: 'gateway',
@@ -70,6 +74,9 @@ export const gatewayBlueprint = {
         },
       );
     }
+
+    // PoE port switches, when the hardware has PoE-capable ports.
+    features.push(...buildPoePortFeatures(gladys, unifiDevice, deviceSelector));
 
     const deviceIp = typeof unifiDevice.ip === 'string' ? unifiDevice.ip.trim() : '';
     const params = [{ name: 'MAC_ADDRESS', value: mac.toUpperCase() }];
