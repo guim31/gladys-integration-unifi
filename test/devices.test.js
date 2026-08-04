@@ -36,9 +36,7 @@ test('gatewayBlueprint formats device payload and IP/MAC params correctly', () =
   ]);
 });
 
-test('poeSwitchBlueprint formats dedicated switch PoE device payload and features', async () => {
-  const { poeSwitchBlueprint } = await import('../src/devices/poePort.js');
-
+test('gatewayBlueprint attaches PoE ports as features of the hardware device itself', () => {
   const mockSwitch = {
     mac: '74:83:c2:11:22:33',
     name: 'Cloud Gateway Fiber',
@@ -48,19 +46,47 @@ test('poeSwitchBlueprint formats dedicated switch PoE device payload and feature
     port_table: [
       { port_idx: 1, poe_caps: 7, name: 'Camera Entrance' },
       { port_idx: 2, poe_caps: 7, name: 'AP Salon' },
+      { port_idx: 3, poe_caps: 0, name: 'Uplink' },
     ],
   };
 
-  const device = poeSwitchBlueprint.buildDevice(gladys, mockSwitch);
-  assert.equal(device.name, 'Switch PoE : Cloud Gateway Fiber');
-  assert.equal(device.external_id, gladys.externalIds('poe-switch', '74:83:c2:11:22:33').device);
-  assert.equal(device.features.length, 2);
-  assert.equal(device.features[0].name, 'Port 1 (Camera Entrance)');
-  assert.equal(device.features[1].name, 'Port 2 (AP Salon)');
+  const device = gatewayBlueprint.buildDevice(gladys, mockSwitch);
+
+  // One hardware = one device: no separate "Switch PoE : ..." device any more.
+  assert.equal(device.name, 'Cloud Gateway Fiber');
+  assert.equal(device.external_id, gladys.externalIds('gateway', '74:83:c2:11:22:33').device);
+
+  // Status + WAN up + WAN down (it is a gateway) + 2 PoE ports (port 3 has no PoE).
+  assert.equal(device.features.length, 5);
+
+  const poeFeatures = device.features.filter((f) => f.external_id.includes(':poe:'));
+  assert.equal(poeFeatures.length, 2);
+  assert.equal(poeFeatures[0].name, 'Port 1 (Camera Entrance)');
+  assert.equal(poeFeatures[1].name, 'Port 2 (AP Salon)');
+
+  // external_id must stay stable: polling and onSetValue rely on this exact shape.
+  assert.equal(poeFeatures[0].external_id, 'unifi:poe:74:83:c2:11:22:33:1:power');
+  assert.equal(poeFeatures[0].selector, 'unifi-gateway-7483c2112233-port-1');
+  assert.equal(poeFeatures[0].read_only, false);
+
   assert.deepEqual(device.params, [
     { name: 'MAC_ADDRESS', value: '74:83:C2:11:22:33' },
     { name: 'IP_ADDRESS', value: '192.168.1.1' },
   ]);
+});
+
+test('gatewayBlueprint adds no PoE feature on hardware without PoE ports', () => {
+  const mockAccessPoint = {
+    mac: 'aa:bb:cc:00:11:22',
+    name: 'AP Salon',
+    model: 'U6-Pro',
+    type: 'uap',
+    port_table: [{ port_idx: 1, poe_caps: 0, name: 'Uplink' }],
+  };
+
+  const device = gatewayBlueprint.buildDevice(gladys, mockAccessPoint);
+  assert.equal(device.features.length, 1);
+  assert.equal(device.features[0].name, 'Status');
 });
 
 test('clientBlueprint formats presence, internet access features, and IP/MAC params', () => {
@@ -155,8 +181,8 @@ test('buildDiscoveredDevices filters clients and infrastructure based on config'
   };
 
   const devices1 = await buildDiscoveredDevices(gladys, configDefault, mockClient);
-  // 1 Switch hardware + 1 Switch PoE device + 3 Active clients + 1 WLAN = 6 devices
-  assert.equal(devices1.length, 6);
+  // 1 Switch hardware (PoE ports included as features) + 3 Active clients + 1 WLAN = 5 devices
+  assert.equal(devices1.length, 5);
 
   // Test 2: wifi_only & allowed_ssids = ['Home']
   const configWifiHome = {

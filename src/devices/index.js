@@ -5,15 +5,9 @@
 import { logger } from '@gladysassistant/integration-sdk';
 import { gatewayBlueprint } from './gateway.js';
 import { clientBlueprint } from './clientPresence.js';
-import { poeSwitchBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
-export const DEVICE_BLUEPRINTS = [
-  gatewayBlueprint,
-  clientBlueprint,
-  poeSwitchBlueprint,
-  wifiNetworkBlueprint,
-];
+export const DEVICE_BLUEPRINTS = [gatewayBlueprint, clientBlueprint, wifiNetworkBlueprint];
 
 /**
  * Perform dynamic scan of all UniFi infrastructure devices, clients, PoE ports, and WLANs.
@@ -44,16 +38,10 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
       logger.info(`UniFi getDevices returned ${devices.length} infrastructure device(s).`);
       for (const dev of devices) {
         if (dev.mac) {
+          // One hardware = one device: status, WAN metrics and PoE ports are
+          // all features of the same device (see gateway.js).
           discovered.push(gatewayBlueprint.buildDevice(gladys, dev));
           addedMacs.add(dev.mac.toLowerCase());
-
-          // Dedicated Switch PoE device if hardware has PoE ports
-          const hasPoePorts =
-            Array.isArray(dev.port_table) &&
-            dev.port_table.some((p) => p.poe_caps && p.poe_caps > 0 && p.port_idx);
-          if (hasPoePorts) {
-            discovered.push(poeSwitchBlueprint.buildDevice(gladys, dev));
-          }
         }
       }
     } else {
