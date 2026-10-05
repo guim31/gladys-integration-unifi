@@ -11,6 +11,14 @@ import {
   handleTestConnectionAction,
   publishDiscoveredDevicesInChunks,
 } from './src/devices/index.js';
+import {
+  WIDGET,
+  buildNetworkContent,
+  buildPresenceContent,
+  buildWifiContent,
+  emptySnapshot,
+  isGatewayDevice,
+} from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -19,6 +27,54 @@ let unifiClient = null;
 let unifiWs = null;
 let presenceTimers = new Map();
 let knownPresenceStates = new Map();
+// The last poll, kept for the dashboard widgets: rendering one never calls
+// the controller.
+let snapshot = emptySnapshot();
+
+// Gladys drops a second widget refresh within 10 s: a nudge sent while the
+// window is open is sent again at its end, so the dashboard never misses the
+// last change.
+const WIDGET_NUDGE_MS = 10 * 1000;
+const widgetNudges = new Map();
+
+/**
+ * Ask the dashboards to re-pull a widget now, or at the end of the current
+ * 10 s window (never fatal).
+ */
+function nudgeWidget(key) {
+  const entry = widgetNudges.get(key) || { last: 0, timer: null };
+  widgetNudges.set(key, entry);
+  if (entry.timer) {
+    return;
+  }
+  const send = () => {
+    entry.timer = null;
+    entry.last = Date.now();
+    try {
+      gladys.requestWidgetRefresh(key);
+    } catch (err) {
+      logger.debug(`Widget refresh (${key}) failed: ${err.message}`);
+    }
+  };
+  const wait = entry.last + WIDGET_NUDGE_MS - Date.now();
+  if (wait <= 0) {
+    send();
+  } else {
+    entry.timer = setTimeout(send, wait);
+    entry.timer.unref?.();
+  }
+}
+
+/**
+ * Remember the presence of a client; a change nudges the presence widget.
+ */
+function setPresence(mac, state) {
+  const changed = knownPresenceStates.get(mac) !== state;
+  knownPresenceStates.set(mac, state);
+  if (changed) {
+    nudgeWidget(WIDGET.PRESENCE);
+  }
+}
 
 /**
  * Initialize or re-initialize UniFi connection clients.
@@ -84,7 +140,7 @@ async function updateClientPresence(mac, state) {
     presenceTimers.delete(mac);
   }
 
-  knownPresenceStates.set(mac, state);
+  setPresence(mac, state);
   const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
   await gladys.publishState(featureId, state).catch(() => {});
 }
@@ -100,7 +156,7 @@ function scheduleClientOffline(mac) {
   const delayMs = (config.presence_offline_delay || 120) * 1000;
   const timer = setTimeout(async () => {
     logger.info(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
-    knownPresenceStates.set(mac, 0);
+    setPresence(mac, 0);
     const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
     await gladys.publishState(featureId, 0).catch(() => {});
     presenceTimers.delete(mac);
@@ -254,6 +310,7 @@ async function pollAllStates() {
   try {
     // 1. Poll active clients presence
     const activeClients = await unifiClient.getClients();
+    snapshot.clients = activeClients;
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
     for (const client of activeClients) {
@@ -278,7 +335,7 @@ async function pollAllStates() {
 
         if (!activeMacs.has(mac)) {
           if (!presenceTimers.has(mac)) {
-            knownPresenceStates.set(mac, 0);
+            setPresence(mac, 0);
             const featureId = gladys.externalId(`client:${mac}:presence`);
             await gladys.publishState(featureId, 0).catch(() => {});
           }
@@ -290,17 +347,11 @@ async function pollAllStates() {
 
     // 3. Poll Infrastructure devices (Gateways, APs, Switches)
     const devices = await unifiClient.getDevices();
+    snapshot.devices = devices;
     for (const dev of devices) {
       if (!dev.mac) continue;
       const mac = dev.mac.toLowerCase();
-      const isGateway =
-        dev.is_gateway ||
-        dev.type === 'ugw' ||
-        dev.type === 'udm' ||
-        dev.type === 'ucg' ||
-        dev.type === 'gateway' ||
-        dev.type === 'gw' ||
-        (dev.model && /ucg|udm|ugw|usg|uxg|gateway/i.test(dev.model));
+      const isGateway = isGatewayDevice(dev);
 
       // Publish Status for ALL infrastructure devices (U6+, U6 Pro, Switches, Gateways)
       const statusFeatureId = gladys.externalId(`gateway:${mac}:status`);
@@ -349,6 +400,7 @@ async function pollAllStates() {
     // 4. Poll Wi-Fi SSID Networks state
     try {
       const wlans = await unifiClient.getWlans();
+      snapshot.wlans = wlans;
       for (const wlan of wlans) {
         if (!wlan._id && !wlan.name) continue;
         const wlanId = String(wlan._id || wlan.name);
@@ -359,6 +411,16 @@ async function pollAllStates() {
     } catch {
       // Ignore if getWlans fails
     }
+
+    // 5. Subsystem health (Internet state of the network widget)
+    try {
+      const health = await unifiClient.getHealth();
+      snapshot.health = Array.isArray(health?.data) ? health.data : [];
+    } catch {
+      // Ignore if getHealth fails
+    }
+
+    snapshot.polled = true;
   } catch (err) {
     logger.warn('Polling UniFi state error:', err.message);
   } finally {
@@ -370,6 +432,35 @@ gladys.onPoll(async () => {
   await pollAllStates();
 });
 
+// --- Dashboard widgets (Gladys 5.1+) -----------------------------------------
+const externalIds = (type, platformId) => gladys.externalIds(type, platformId);
+
+/** The devices the user created in Gladys ([] when the host does not answer). */
+async function gladysDevices() {
+  try {
+    return await gladys.getDevices();
+  } catch (err) {
+    logger.warn('getDevices failed:', err.message);
+    return [];
+  }
+}
+
+gladys.onWidgetGet(WIDGET.NETWORK, async ({ settings }) => {
+  return buildNetworkContent({ snapshot, settings, externalIds });
+});
+
+gladys.onWidgetGet(WIDGET.PRESENCE, async ({ settings }) => {
+  return buildPresenceContent({
+    gladysDevices: await gladysDevices(),
+    presence: knownPresenceStates,
+    settings,
+  });
+});
+
+gladys.onWidgetGet(WIDGET.WIFI, async ({ settings }) => {
+  return buildWifiContent({ snapshot, settings, externalIds });
+});
+
 // --- Manifest Action (Test Connection) ---------------------------------------
 gladys.onAction('test_connection', async () => {
   return await handleTestConnectionAction(gladys, unifiClient);
@@ -379,6 +470,8 @@ gladys.onAction('test_connection', async () => {
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
   config = normalizeConfig(newConfig);
+  // Another console or site: the widgets must not show the previous one.
+  snapshot = emptySnapshot();
   await initUniFiConnection();
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
   await publishDiscoveredDevicesInChunks(gladys, devices);
@@ -412,6 +505,10 @@ gladys.handleShutdown((signal) => {
     clearTimeout(timer);
   }
   presenceTimers.clear();
+  for (const entry of widgetNudges.values()) {
+    if (entry.timer) clearTimeout(entry.timer);
+  }
+  widgetNudges.clear();
 });
 
 // --- Startup -----------------------------------------------------------------
