@@ -18,7 +18,7 @@ The integration connects directly to your local UniFi console using a **local ad
 
 ### Create a dedicated local admin account in UniFi OS:
 
-1. Log into your UniFi OS console (`https://192.168.1.1` or `https://192.168.100.1`).
+1. Log into your UniFi OS console (`https://192.168.1.1`).
 2. In the left navigation bar, click **Admins / Users (👥)** (or under _Control Plane / Identity > Admins_).
 3. Click **Add Admin**.
 4. Select **Local Access Only**.
@@ -35,7 +35,7 @@ The integration connects directly to your local UniFi console using a **local ad
 
 ## Dashboard widgets
 
-Since Gladys 5.1, the integration offers three widgets in the dashboard editor. They read the integration's last poll (every 30 seconds) and never query the console on their own. No widget shows a MAC or an IP address: a dashboard can be public.
+Since Gladys 5.1, the integration offers three widgets in the dashboard editor. They read the integration's last poll (every 30 seconds) and never query the console on their own. No widget shows a MAC or an IP address (the address fragments a nameless client gets in its Gladys name are removed): a dashboard can be public.
 
 - **Network**: the network at a glance. Two tiles, "Download" and "Upload", and a chart follow the gateway's WAN throughput features, live; the "Clients" (active clients) and "Devices" (UniFi hardware online / total) tiles come from the last poll; the status list gives the Internet state (the console's WAN subsystem), the Wi-Fi, wired and guest clients, and the hardware offline.
   - Settings: **Gateway** (the gateway added to Gladys; empty = the first known gateway) and **Chart period** (last hour, last day, last week).

@@ -21,6 +21,7 @@
 // -----------------------------------------------------------------------------
 
 import { WIDGET_CHART_INTERVALS, WIDGET_COLORS } from '@gladysassistant/integration-sdk';
+import { isGatewayDevice } from './devices/gateway.js';
 
 /** Widget keys, declared in the manifest `widgets` (forever: never rename). */
 export const WIDGET = {
@@ -58,6 +59,7 @@ const T = {
   internet: { en: 'Internet', fr: 'Internet' },
   ok: { en: 'OK', fr: 'OK' },
   down: { en: 'Down', fr: 'Coupé' },
+  degraded: { en: 'Degraded', fr: 'Dégradé' },
   unknown: { en: 'Unknown', fr: 'Inconnu' },
   wifiClients: { en: 'Wi-Fi', fr: 'Wi-Fi' },
   wiredClients: { en: 'Wired', fr: 'Filaire' },
@@ -80,6 +82,7 @@ const T = {
   },
   nobodyHome: { en: 'Nobody is home.', fr: 'Personne à la maison.' },
   others: (n) => ({ en: `+ ${n} more`, fr: `+ ${n} autres` }),
+  device: { en: 'Device', fr: 'Appareil' },
   state: { en: 'State', fr: 'État' },
   enabled: { en: 'Enabled', fr: 'Activé' },
   disabled: { en: 'Disabled', fr: 'Désactivé' },
@@ -103,22 +106,6 @@ export function emptySnapshot() {
 }
 
 /**
- * True for a UniFi gateway (UCG, UDM, USG, UXG…): the hardware that carries
- * the WAN link and the `wan-down` / `wan-up` features.
- * @param {object} dev a UniFi device of `stat/device`
- */
-export function isGatewayDevice(dev) {
-  if (!dev) {
-    return false;
-  }
-  return Boolean(
-    dev.is_gateway ||
-    ['ugw', 'udm', 'ucg', 'gateway', 'gw'].includes(dev.type) ||
-    (dev.model && /ucg|udm|ugw|usg|uxg|gateway/i.test(dev.model)),
-  );
-}
-
-/**
  * The WLAN id the devices use as platform id (`wifi:<id>`): the controller's
  * `_id`, else the name.
  * @param {object} wlan a WLAN of `rest/wlanconf`
@@ -135,6 +122,33 @@ export function wlanIdOf(wlan) {
 export function clientMacOf(externalId) {
   const match = String(externalId || '').match(/(?:^|:)client:((?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i);
   return match ? match[1].toLowerCase() : null;
+}
+
+// What getClientDisplayName() builds for a nameless client: "Apple
+// (192.168.1.5)", "Samsung (ee:ff)", "Appareil 192.168.1.5 (ee:ff)",
+// "Appareil (aa:bb:cc:dd:ee:ff)". A MAC fragment is only looked for inside
+// parentheses (a bare "07:30" may be a time in a real name).
+const IPV4 = String.raw`\d{1,3}(?:\.\d{1,3}){3}`;
+const MAC = String.raw`(?:[0-9a-f]{2}:){5}[0-9a-f]{2}`;
+const MAC_FRAGMENT = String.raw`(?:[0-9a-f]{2}:){1,5}[0-9a-f]{2}`;
+const ADDRESS_IN_PARENS = new RegExp(
+  String.raw`\s*\((?:[^()]*?(?:${IPV4}|${MAC_FRAGMENT}))[^()]*\)`,
+  'gi',
+);
+const BARE_ADDRESS = new RegExp(String.raw`(?:^|\s)(?:${IPV4}|${MAC})(?=\s|$)`, 'gi');
+
+/**
+ * A device name fit for a public dashboard: the IP and MAC fragments that
+ * getClientDisplayName() adds to a nameless client are removed, and a name
+ * that was only an address becomes empty (the caller shows a neutral word).
+ * @param {unknown} name the Gladys device name
+ */
+export function publicName(name) {
+  return String(name ?? '')
+    .replace(ADDRESS_IN_PARENS, '')
+    .replace(BARE_ADDRESS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** Cut a text to `max` characters, with an ellipsis. */
@@ -186,6 +200,24 @@ export function pickWlan(snapshot, chosen, externalIds) {
 /** The subsystem health entries, by subsystem name. */
 function healthOf(snapshot, subsystem) {
   return snapshot.health.find((entry) => entry && entry.subsystem === subsystem) ?? null;
+}
+
+/**
+ * The Internet row of the network widget, from the `wan` subsystem of
+ * `stat/health`: `ok`, `warning`, `error`, or `unknown` (also when absent).
+ * @param {{ status?: string }|null} wan the wan subsystem entry
+ */
+export function internetStateOf(wan) {
+  switch (String(wan?.status || '').toLowerCase()) {
+    case 'ok':
+      return { value: T.ok, color: WIDGET_COLORS.SUCCESS };
+    case 'error':
+      return { value: T.down, color: WIDGET_COLORS.DANGER };
+    case 'warning':
+      return { value: T.degraded, color: WIDGET_COLORS.WARNING };
+    default:
+      return { value: T.unknown, color: WIDGET_COLORS.NEUTRAL };
+  }
 }
 
 /**
@@ -245,12 +277,7 @@ export function buildNetworkContent({ snapshot, settings = {}, externalIds }) {
     components.push({ type: 'text', variant: 'caption', text: T.noGateway });
   }
 
-  const wan = healthOf(snapshot, 'wan');
-  const internet = !wan
-    ? { value: T.unknown, color: WIDGET_COLORS.NEUTRAL }
-    : wan.status === 'ok'
-      ? { value: T.ok, color: WIDGET_COLORS.SUCCESS }
-      : { value: T.down, color: WIDGET_COLORS.DANGER };
+  const internet = internetStateOf(healthOf(snapshot, 'wan'));
   const status = [
     { label: T.internet, value: internet.value, icon: 'globe', color: internet.color },
     { label: T.wifiClients, value: wifi, icon: 'wifi', color: WIDGET_COLORS.INFO },
@@ -276,7 +303,9 @@ export function buildNetworkContent({ snapshot, settings = {}, externalIds }) {
  * stored for the presence feature.
  * @param {Array<object>} gladysDevices the devices of `gladys.getDevices()`
  * @param {Map<string, number>} presence live presence by MAC (0 / 1)
- * @returns {Array<{ name: string, mac: string, present: boolean }>}
+ * @returns {Array<{ name: string|object, mac: string, present: boolean }>}
+ *   `name` is the Gladys name without address fragments, or a neutral
+ *   multi-language word when nothing readable is left.
  */
 export function presenceRows(gladysDevices, presence) {
   const rows = [];
@@ -290,13 +319,14 @@ export function presenceRows(gladysDevices, presence) {
     );
     const live = presence?.get(mac);
     const present = live !== undefined ? live === 1 : feature?.last_value === 1;
-    rows.push({ name: String(device.name || mac).trim() || mac, mac, present });
+    rows.push({ name: publicName(device.name) || T.device, mac, present });
   }
-  // Present first, then by name.
+  // Present first, then by name (a nameless device after the named ones).
+  const sortKey = (row) => (typeof row.name === 'string' ? row.name : '\uffff');
   rows.sort(
     (a, b) =>
       Number(b.present) - Number(a.present) ||
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+      sortKey(a).localeCompare(sortKey(b), undefined, { sensitivity: 'base' }),
   );
   return rows;
 }
@@ -328,7 +358,7 @@ export function buildPresenceContent({ gladysDevices, presence, settings = {} })
   components.push({
     type: 'status',
     items: shown.slice(0, MAX_STATUS_ROWS).map((row) => ({
-      label: truncate(row.name, MAX_STATUS_LABEL),
+      label: typeof row.name === 'string' ? truncate(row.name, MAX_STATUS_LABEL) : row.name,
       value: row.present ? T.presentOne : T.absent,
       icon: row.present ? 'user-check' : 'user-x',
       color: row.present ? WIDGET_COLORS.SUCCESS : WIDGET_COLORS.NEUTRAL,

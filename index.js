@@ -11,13 +11,13 @@ import {
   handleTestConnectionAction,
   publishDiscoveredDevicesInChunks,
 } from './src/devices/index.js';
+import { isGatewayDevice } from './src/devices/gateway.js';
 import {
   WIDGET,
   buildNetworkContent,
   buildPresenceContent,
   buildWifiContent,
   emptySnapshot,
-  isGatewayDevice,
 } from './src/widgets.js';
 
 const gladys = new GladysIntegration();
@@ -311,6 +311,9 @@ async function pollAllStates() {
     // 1. Poll active clients presence
     const activeClients = await unifiClient.getClients();
     snapshot.clients = activeClients;
+    // The widgets have something to show from here on, whatever the later
+    // steps do (a restricted API key may fail stat/device every time).
+    snapshot.polled = true;
     const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
 
     for (const client of activeClients) {
@@ -419,8 +422,6 @@ async function pollAllStates() {
     } catch {
       // Ignore if getHealth fails
     }
-
-    snapshot.polled = true;
   } catch (err) {
     logger.warn('Polling UniFi state error:', err.message);
   } finally {

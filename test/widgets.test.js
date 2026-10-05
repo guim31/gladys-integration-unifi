@@ -16,14 +16,16 @@ import {
   buildWifiContent,
   clientMacOf,
   emptySnapshot,
-  isGatewayDevice,
+  internetStateOf,
   pickGateway,
   pickWlan,
   presenceRows,
+  publicName,
   truncate,
   wlanBandOf,
   wlanSecurityOf,
 } from '../src/widgets.js';
+import { isGatewayDevice } from '../src/devices/gateway.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
 const gladys = createFakeGladys();
@@ -253,16 +255,33 @@ test('network: an unknown interval falls back to the default', () => {
   assert.equal(byType(content, 'chart')[0].interval, DEFAULT_NETWORK_INTERVAL);
 });
 
-test('network: Internet is down (danger) or unknown (neutral) from the wan subsystem', () => {
-  const down = buildNetworkContent({
-    snapshot: snapshot({ health: [{ subsystem: 'wan', status: 'warning' }] }),
-    externalIds,
-  });
-  assertSafe(down);
-  assert.deepEqual(byType(down, 'status')[0].items[0].color, 'danger');
-  const unknown = buildNetworkContent({ snapshot: snapshot({ health: [] }), externalIds });
-  assertSafe(unknown);
-  assert.deepEqual(byType(unknown, 'status')[0].items[0].color, 'neutral');
+test('network: Internet follows the wan subsystem status (ok, warning, error, unknown)', () => {
+  const internetOf = (health) => {
+    const content = buildNetworkContent({ snapshot: snapshot({ health }), externalIds });
+    assertSafe(content);
+    const [row] = byType(content, 'status')[0].items;
+    return [row.value.fr, row.color];
+  };
+  assert.deepEqual(internetOf([{ subsystem: 'wan', status: 'ok' }]), ['OK', 'success']);
+  assert.deepEqual(internetOf([{ subsystem: 'wan', status: 'warning' }]), ['Dégradé', 'warning']);
+  assert.deepEqual(internetOf([{ subsystem: 'wan', status: 'error' }]), ['Coupé', 'danger']);
+  assert.deepEqual(internetOf([{ subsystem: 'wan', status: 'unknown' }]), ['Inconnu', 'neutral']);
+  assert.deepEqual(internetOf([{ subsystem: 'www', status: 'ok' }]), ['Inconnu', 'neutral']);
+  assert.deepEqual(internetOf([]), ['Inconnu', 'neutral']);
+  assert.equal(internetStateOf(null).color, 'neutral');
+});
+
+test('publicName strips the address fragments of a default client name', () => {
+  assert.equal(publicName('Téléphone de Zoé'), 'Téléphone de Zoé');
+  assert.equal(publicName('Apple (192.168.1.5)'), 'Apple');
+  assert.equal(publicName('Samsung (ee:ff)'), 'Samsung');
+  assert.equal(publicName('Appareil 192.168.1.5 (ee:ff)'), 'Appareil');
+  assert.equal(publicName('Réveil 07:30'), 'Réveil 07:30');
+  assert.equal(publicName('Appareil (aa:bb:cc:dd:ee:ff)'), 'Appareil');
+  assert.equal(publicName('Appareil (Inconnu)'), 'Appareil (Inconnu)');
+  assert.equal(publicName('aa:bb:cc:dd:ee:ff'), '');
+  assert.equal(publicName('192.168.1.5'), '');
+  assert.equal(publicName(undefined), '');
 });
 
 test('network: no guests row when nobody is a guest, offline row green when all is up', () => {
@@ -409,6 +428,32 @@ test('presence: no client device in Gladys is an explicit body text, never an er
     [['text', 'body']],
   );
   assertSafe(buildPresenceContent({ gladysDevices: [], presence: new Map() }));
+});
+
+test('presence: default client names lose their IP and MAC, a bare address becomes a neutral word', () => {
+  const devices = [
+    device('Apple (192.168.1.5)', '11:11:11:11:11:11', 1),
+    device('Samsung (ee:ff)', '22:22:22:22:22:22', 1),
+    device('aa:bb:cc:dd:ee:ff', '33:33:33:33:33:33', 0),
+    device('', '44:44:44:44:44:44', 0),
+    device('Appareil 192.168.1.5 (ee:ff)', '55:55:55:55:55:55', 1),
+  ];
+  const content = buildPresenceContent({
+    gladysDevices: devices,
+    presence: new Map(),
+    settings: {},
+  });
+  assertSafe(content);
+  assert.deepEqual(
+    byType(content, 'status')[0].items.map((item) => item.label),
+    [
+      'Appareil',
+      'Apple',
+      'Samsung',
+      { en: 'Device', fr: 'Appareil' },
+      { en: 'Device', fr: 'Appareil' },
+    ],
+  );
 });
 
 test('presence: a long Gladys name is cut to the status label limit', () => {

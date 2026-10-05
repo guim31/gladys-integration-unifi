@@ -18,7 +18,7 @@ L'intégration prend en charge 2 modes au choix :
 
 ### Mode 1 : Clé API Locale (Recommandé)
 
-1. Rendez-vous sur votre console UniFi dans le menu **Integrations** (ex: `https://192.168.100.1/network/default/integrations` ou _UniFi Network > Control Plane / Settings > Integrations_).
+1. Rendez-vous sur votre console UniFi dans le menu **Integrations** (ex: `https://192.168.1.1/network/default/integrations` ou _UniFi Network > Control Plane / Settings > Integrations_).
 2. Cliquez sur **Create New API Key**.
 3. Nommez la clé (ex: `Gladys`) et copiez la clé générée.
 4. Dans Gladys, choisissez le mode **Clé API Locale** et collez la clé.
@@ -27,7 +27,7 @@ L'intégration prend en charge 2 modes au choix :
 
 ### Mode 2 : Compte Administrateur Local (Nom d'utilisateur & Mot de passe)
 
-1. Connectez-vous à votre console UniFi OS (`https://192.168.100.1`).
+1. Connectez-vous à votre console UniFi OS (`https://192.168.1.1`).
 2. Allez dans **Admins / Utilisateurs (👥)** (ou dans _Control Plane / Identity > Admins_).
 3. Cliquez sur **+ Create New** et cochez **Restrict to Local Access Only**.
 4. Définissez un nom d'utilisateur (ex: `gladys`) et un mot de passe fort.
@@ -43,7 +43,7 @@ L'intégration prend en charge 2 modes au choix :
 
 ## Widgets du tableau de bord
 
-Depuis Gladys 5.1, l'intégration propose trois widgets dans l'éditeur de tableau de bord. Ils lisent le dernier relevé de l'intégration (toutes les 30 secondes) et n'interrogent jamais la console en plus. Aucun widget n'affiche d'adresse MAC ni d'adresse IP : un tableau de bord peut être public.
+Depuis Gladys 5.1, l'intégration propose trois widgets dans l'éditeur de tableau de bord. Ils lisent le dernier relevé de l'intégration (toutes les 30 secondes) et n'interrogent jamais la console en plus. Aucun widget n'affiche d'adresse MAC ni d'adresse IP (les fragments d'adresse qu'un client sans nom reçoit dans son nom Gladys sont retirés) : un tableau de bord peut être public.
 
 - **Réseau** : le réseau en un coup d'œil. Deux tuiles « Descendant » et « Montant » et un graphique suivent les fonctionnalités de débit WAN de la passerelle, en direct ; les tuiles « Clients » (clients actifs) et « Équipements » (équipements UniFi en ligne / total) viennent du dernier relevé ; la liste d'état donne l'état d'Internet (sous-système WAN de la console), les clients Wi-Fi, filaires et invités, et les équipements hors ligne.
   - Réglages : **Passerelle** (la passerelle ajoutée à Gladys ; vide = la première passerelle connue) et **Période du graphique** (dernière heure, dernier jour, dernière semaine).

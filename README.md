@@ -37,7 +37,7 @@ From the Gladys Assistant interface:
 
 ### 2. Local Authentication
 
-- **IP Address**: Enter your UniFi Gateway local IP (e.g. `192.168.1.1` or `192.168.100.1`).
+- **IP Address**: Enter your UniFi Gateway local IP (e.g. `192.168.1.1`).
 - **Local Credentials**: Local UniFi admin account (created in _Console > Users & Admins (👥) > Add Admin > Local Access Only_).
 
 ---
