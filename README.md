@@ -1,6 +1,6 @@
 # Gladys Assistant UniFi Integration
 
-[![Gladys Assistant](https://img.shields.io/badge/Gladys-Assistant_4.84+-blue.svg)](https://gladysassistant.com)
+[![Gladys Assistant](https://img.shields.io/badge/Gladys-Assistant_5.1+-blue.svg)](https://gladysassistant.com)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue.svg)](https://ghcr.io)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 
@@ -22,6 +22,7 @@ Official external integration for **Ubiquiti UniFi Network** on [Gladys Assistan
 3. **PoE Port Power Control**: Toggle PoE power on switch ports to reboot cameras or APs.
 4. **Wi-Fi SSID Switch**: Turn Wi-Fi networks (such as Guest Wi-Fi) ON/OFF via Gladys scenes.
 5. **WAN Metrics**: Download/Upload speeds in Mbps and Gateway status.
+6. **Dashboard Widgets** (Gladys 5.1+): Network at a glance (WAN throughput chart, clients, hardware, Internet state), Presence (who is home) and Wi-Fi (one SSID with Enable/Disable buttons). See [docs/en.md](docs/en.md#dashboard-widgets).
 
 ---
 
@@ -36,7 +37,7 @@ From the Gladys Assistant interface:
 
 ### 2. Local Authentication
 
-- **IP Address**: Enter your UniFi Gateway local IP (e.g. `192.168.1.1` or `192.168.100.1`).
+- **IP Address**: Enter your UniFi Gateway local IP (e.g. `192.168.1.1`).
 - **Local Credentials**: Local UniFi admin account (created in _Console > Users & Admins (👥) > Add Admin > Local Access Only_).
 
 ---

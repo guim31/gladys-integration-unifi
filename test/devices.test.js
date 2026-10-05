@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
-import { gatewayBlueprint } from '../src/devices/gateway.js';
+import { gatewayBlueprint, isGatewayDevice } from '../src/devices/gateway.js';
 import { clientPresenceBlueprint, getClientDisplayName } from '../src/devices/clientPresence.js';
 import { wifiNetworkBlueprint } from '../src/devices/wifiNetwork.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -231,4 +231,25 @@ test('publishDiscoveredDevicesInChunks batches devices into chunks of 100 max', 
   assert.equal(publishedChunks[0].length, 100);
   assert.equal(publishedChunks[1].length, 100);
   assert.equal(publishedChunks[2].length, 50);
+});
+
+test('isGatewayDevice recognizes every gateway shape the poll feeds, not switches nor APs', () => {
+  assert.equal(isGatewayDevice({ type: 'ucg', model: 'UCG-Fiber' }), true);
+  assert.equal(isGatewayDevice({ type: 'udm', model: 'UDMPRO' }), true);
+  assert.equal(isGatewayDevice({ type: 'ugw', model: 'USG3' }), true);
+  assert.equal(isGatewayDevice({ type: 'uxg', model: 'UXGLite', is_gateway: true }), true);
+  assert.equal(isGatewayDevice({ type: 'usw', model: 'USW-24-PoE' }), false);
+  assert.equal(isGatewayDevice({ type: 'uap', model: 'U6-Pro' }), false);
+  assert.equal(isGatewayDevice(null), false);
+});
+
+test('gatewayBlueprint declares the WAN features for a USG or an is_gateway device', () => {
+  for (const unifiDevice of [
+    { mac: 'aa:bb:cc:00:00:01', name: 'USG', model: 'USG3', type: 'ugw' },
+    { mac: 'aa:bb:cc:00:00:02', name: 'UXG', model: 'UXGLite', type: 'uxg', is_gateway: true },
+  ]) {
+    const device = gatewayBlueprint.buildDevice(gladys, unifiDevice);
+    const keys = device.features.map((f) => f.external_id.split(':').at(-1));
+    assert.deepEqual(keys, ['status', 'wan-up', 'wan-down'], unifiDevice.name);
+  }
 });

@@ -8,14 +8,17 @@
   },
   "version": "1.5.2",
   "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.5.2",
-  "gladys_version": ">=4.62.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-integration-unifi/main/cover.png",
   "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Local UniFi Connection", "fr": "Connexion Locale UniFi OS" },
+      "label": {
+        "en": "Local UniFi Connection",
+        "fr": "Connexion Locale UniFi OS"
+      },
       "description": {
         "en": "Select your authentication mode and enter your local UniFi credentials or local API key.",
         "fr": "Sélectionnez le mode d'authentification et entrez vos identifiants locaux UniFi ou votre clé API locale."
@@ -24,7 +27,10 @@
     {
       "key": "unifi_host",
       "type": "string",
-      "label": { "en": "IP Address / Hostname", "fr": "Adresse IP / Hôte" },
+      "label": {
+        "en": "IP Address / Hostname",
+        "fr": "Adresse IP / Hôte"
+      },
       "description": {
         "en": "IP address of your UniFi OS console (e.g. 192.168.1.1).",
         "fr": "Adresse IP de votre console UniFi OS (ex: 192.168.1.1)."
@@ -35,7 +41,10 @@
     {
       "key": "unifi_port",
       "type": "number",
-      "label": { "en": "Port", "fr": "Port" },
+      "label": {
+        "en": "Port",
+        "fr": "Port"
+      },
       "required": true,
       "default": 443,
       "min": 1,
@@ -44,7 +53,10 @@
     {
       "key": "unifi_auth_type",
       "type": "select",
-      "label": { "en": "Authentication Mode", "fr": "Mode d'authentification" },
+      "label": {
+        "en": "Authentication Mode",
+        "fr": "Mode d'authentification"
+      },
       "required": true,
       "default": "api_key",
       "options": [
@@ -67,7 +79,10 @@
     {
       "key": "unifi_api_key",
       "type": "secret",
-      "label": { "en": "Local API Key", "fr": "Clé API Locale" },
+      "label": {
+        "en": "Local API Key",
+        "fr": "Clé API Locale"
+      },
       "description": {
         "en": "API Key generated in UniFi Network > Integrations.",
         "fr": "Clé API générée dans UniFi Network > Intégrations."
@@ -77,7 +92,10 @@
     {
       "key": "unifi_username",
       "type": "string",
-      "label": { "en": "Local Username", "fr": "Nom d'utilisateur local" },
+      "label": {
+        "en": "Local Username",
+        "fr": "Nom d'utilisateur local"
+      },
       "description": {
         "en": "Local admin username created in Console > Users & Admins (required if Credentials mode selected).",
         "fr": "Nom d'admin local créé dans Console > Utilisateurs & Admins (requis si mode Identifiants)."
@@ -87,20 +105,29 @@
     {
       "key": "unifi_password",
       "type": "secret",
-      "label": { "en": "Local Password", "fr": "Mot de passe local" },
+      "label": {
+        "en": "Local Password",
+        "fr": "Mot de passe local"
+      },
       "required": false
     },
     {
       "key": "unifi_site_id",
       "type": "string",
-      "label": { "en": "Site ID", "fr": "ID du Site" },
+      "label": {
+        "en": "Site ID",
+        "fr": "ID du Site"
+      },
       "required": true,
       "default": "default"
     },
     {
       "key": "presence_offline_delay",
       "type": "number",
-      "label": { "en": "Presence Offline Delay (s)", "fr": "Délai de déconnexion présence (s)" },
+      "label": {
+        "en": "Presence Offline Delay (s)",
+        "fr": "Délai de déconnexion présence (s)"
+      },
       "description": {
         "en": "Inactivity delay before marking a device as absent (prevents deep sleep toggling).",
         "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les faux positifs en veille)."
@@ -135,7 +162,10 @@
     {
       "key": "discover_clients",
       "type": "boolean",
-      "label": { "en": "Discover Network Clients", "fr": "Découvrir les clients du réseau" },
+      "label": {
+        "en": "Discover Network Clients",
+        "fr": "Découvrir les clients du réseau"
+      },
       "required": false,
       "default": true
     },
@@ -156,28 +186,43 @@
     {
       "key": "client_connection_type",
       "type": "select",
-      "label": { "en": "Client Connection Type", "fr": "Type de connexion des clients" },
+      "label": {
+        "en": "Client Connection Type",
+        "fr": "Type de connexion des clients"
+      },
       "required": false,
       "default": "all",
       "options": [
         {
           "value": "all",
-          "label": { "en": "All (Wi-Fi & Wired)", "fr": "Tous (Wi-Fi et Filaire)" }
+          "label": {
+            "en": "All (Wi-Fi & Wired)",
+            "fr": "Tous (Wi-Fi et Filaire)"
+          }
         },
         {
           "value": "wifi_only",
-          "label": { "en": "Wi-Fi Only", "fr": "Wi-Fi uniquement" }
+          "label": {
+            "en": "Wi-Fi Only",
+            "fr": "Wi-Fi uniquement"
+          }
         },
         {
           "value": "wired_only",
-          "label": { "en": "Wired Only", "fr": "Filaire uniquement" }
+          "label": {
+            "en": "Wired Only",
+            "fr": "Filaire uniquement"
+          }
         }
       ]
     },
     {
       "key": "allowed_ssids",
       "type": "string",
-      "label": { "en": "Allowed Wi-Fi SSIDs", "fr": "SSIDs Wi-Fi autorisés" },
+      "label": {
+        "en": "Allowed Wi-Fi SSIDs",
+        "fr": "SSIDs Wi-Fi autorisés"
+      },
       "description": {
         "en": "Filter Wi-Fi clients by SSID names (comma separated, e.g. Home, IoT). Leave empty to allow all SSIDs.",
         "fr": "Filtrer les clients Wi-Fi par noms de SSID (séparés par des virgules, ex: Maison, IoT). Laissez vide pour autoriser tous les SSIDs."
@@ -189,8 +234,142 @@
   "actions": [
     {
       "key": "test_connection",
-      "label": { "en": "Test UniFi Connection", "fr": "Tester la connexion UniFi" },
+      "label": {
+        "en": "Test UniFi Connection",
+        "fr": "Tester la connexion UniFi"
+      },
       "timeout_seconds": 30
+    }
+  ],
+  "widgets": [
+    {
+      "key": "network",
+      "label": {
+        "en": "Network",
+        "fr": "Réseau"
+      },
+      "description": {
+        "en": "WAN throughput, clients, UniFi hardware and Internet state at a glance.",
+        "fr": "Débit WAN, clients, équipements UniFi et état d'Internet en un coup d'œil."
+      },
+      "icon": "globe",
+      "settings": [
+        {
+          "key": "gateway",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Gateway",
+            "fr": "Passerelle"
+          },
+          "description": {
+            "en": "The gateway added to Gladys whose WAN throughput is shown. Leave empty for the first known gateway.",
+            "fr": "La passerelle ajoutée à Gladys dont le débit WAN est affiché. Laissez vide pour la première passerelle connue."
+          },
+          "required": false
+        },
+        {
+          "key": "interval",
+          "type": "select",
+          "label": {
+            "en": "Chart period",
+            "fr": "Période du graphique"
+          },
+          "required": false,
+          "default": "last-hour",
+          "options": [
+            {
+              "value": "last-hour",
+              "label": {
+                "en": "Last hour",
+                "fr": "Dernière heure"
+              }
+            },
+            {
+              "value": "last-day",
+              "label": {
+                "en": "Last day",
+                "fr": "Dernier jour"
+              }
+            },
+            {
+              "value": "last-week",
+              "label": {
+                "en": "Last week",
+                "fr": "Dernière semaine"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "presence",
+      "label": {
+        "en": "Presence",
+        "fr": "Présence"
+      },
+      "description": {
+        "en": "Who is home: the network clients added to Gladys, present first.",
+        "fr": "Qui est à la maison : les clients réseau ajoutés à Gladys, présents en premier."
+      },
+      "icon": "users",
+      "settings": [
+        {
+          "key": "show",
+          "type": "select",
+          "label": {
+            "en": "Show",
+            "fr": "Afficher"
+          },
+          "required": false,
+          "default": "all",
+          "options": [
+            {
+              "value": "all",
+              "label": {
+                "en": "Present and absent",
+                "fr": "Présents et absents"
+              }
+            },
+            {
+              "value": "present",
+              "label": {
+                "en": "Present only",
+                "fr": "Présents seulement"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "wifi",
+      "label": {
+        "en": "Wi-Fi",
+        "fr": "Wi-Fi"
+      },
+      "description": {
+        "en": "One Wi-Fi network: its state, its clients, and two buttons to switch it.",
+        "fr": "Un réseau Wi-Fi : son état, ses clients, et deux boutons pour le commuter."
+      },
+      "icon": "wifi",
+      "settings": [
+        {
+          "key": "network",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Wi-Fi network",
+            "fr": "Réseau Wi-Fi"
+          },
+          "description": {
+            "en": "The Wi-Fi network (SSID) added to Gladys. Leave empty for the first known SSID.",
+            "fr": "Le réseau Wi-Fi (SSID) ajouté à Gladys. Laissez vide pour le premier SSID connu."
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }

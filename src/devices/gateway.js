@@ -6,6 +6,24 @@ import {
 import { buildPoePortFeatures } from './poePort.js';
 
 /**
+ * True for a UniFi gateway (UCG, UDM, USG, UXG…): the hardware that carries
+ * the WAN link, and so the `wan-down` / `wan-up` features. One detection for
+ * the blueprint, the poll and the widgets: a gateway the poll feeds is a
+ * gateway the blueprint declares.
+ * @param {object} dev a UniFi device of `stat/device`
+ */
+export function isGatewayDevice(dev) {
+  if (!dev) {
+    return false;
+  }
+  return Boolean(
+    dev.is_gateway ||
+    ['ugw', 'udm', 'ucg', 'gateway', 'gw'].includes(dev.type) ||
+    (dev.model && /ucg|udm|ugw|usg|uxg|gateway/i.test(dev.model)),
+  );
+}
+
+/**
  * Blueprint for UniFi Infrastructure Devices (UCG Fiber / UDM / USG / Switches / APs).
  *
  * One piece of hardware = one Gladys device: status, WAN metrics and PoE port
@@ -23,11 +41,7 @@ export const gatewayBlueprint = {
     const cleanMac = mac.replace(/[^a-z0-9]/g, '');
     const deviceSelector = `unifi-gateway-${cleanMac}`;
     const ids = gladys.externalIds('gateway', mac);
-    const isGateway =
-      unifiDevice.type === 'ugw' ||
-      unifiDevice.type === 'udm' ||
-      unifiDevice.type === 'ucg' ||
-      (unifiDevice.model && unifiDevice.model.toUpperCase().includes('UCG'));
+    const isGateway = isGatewayDevice(unifiDevice);
 
     const features = [
       {
