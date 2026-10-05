@@ -7,6 +7,7 @@ export function createFakeGladys() {
   const cameraImages = [];
   const transports = [];
   const connectionStatuses = [];
+  const externalId = (suffix) => `unifi:${suffix}`;
 
   return {
     published,
@@ -14,12 +15,11 @@ export function createFakeGladys() {
     transports,
     connectionStatuses,
 
-    externalId(suffix) {
-      return `unifi:${suffix}`;
-    },
+    externalId,
 
+    // Same shape as the SDK: `externalIds(t, id).feature(k)` === `externalId(\`${t}:${id}:${k}\`)`.
     externalIds(type, platformId) {
-      const device = `${type}:${platformId}`;
+      const device = externalId(`${type}:${platformId}`);
       return {
         device,
         feature: (key) => `${device}:${key}`,
