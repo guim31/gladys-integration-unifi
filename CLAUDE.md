@@ -72,6 +72,16 @@ Release est donc une **minor** au moins, et le topic du forum doit le dire.
   matériel. Poll et `onSetValue` ne lisent que l'`external_id` de la fonctionnalité : rien à
   changer. `test/legacyPoeSwitch.test.js` rejoue le 409 avec un faux cœur
   (`test/helpers/fakeCore.js`) qui refuse une fonctionnalité déjà détenue par un autre appareil.
+- **États** : tout passe par `src/statePublisher.js` (jamais `gladys.publishState` en direct) :
+  seulement les fonctionnalités des appareils créés (`gladys.devices`, que le SDK tient à jour par
+  `GET /device` et les événements created / updated / deleted ; `getDevices()` de la découverte le
+  rafraîchit aussi), seulement les changements. Exception : un `presence-sensor` à 1 est republié
+  au plus une fois par minute, car l'action de scène « Vérifier la présence »
+  (`user.check-presence`) lit `last_value_changed`, que le cœur rafraîchit à chaque état reçu, même
+  identique (comme le fait `lan-manager`, qui republie 1 à chaque scan). `onSetValue` publie avec
+  `force` (état optimiste). `onDeviceCreated` / `onDeviceUpdated` oublient les dernières valeurs
+  de l'appareil puis relancent un poll ; reconnexion et nouvelle configuration oublient tout. Le
+  poll et la présence vivent dans `src/poller.js`, testable sans réseau.
 - Textes des widgets en objets `{ en, fr }` : le cœur choisit la langue, le code n'a pas besoin de
   `language`.
 
@@ -141,7 +151,11 @@ Vérifiés dans le code du cœur ou payés sur une intégration publiée. Ils va
   jamais `min`/`max` en écriture : ce sont des bornes d'affichage. Une valeur signée exige des
   bornes symétriques.
 - Le cœur plafonne à **300 états par minute** et réévalue les scènes à chaque état : ne publier
-  que les changements.
+  que les changements. **Publier pour un appareil non ajouté gaspille ce quota** : le cœur
+  l'ignore (« DeviceFeature … not found (or not added to Gladys) ») mais le compte. Filtrer sur
+  les appareils créés (`gladys.devices`). Mais un état identique n'est pas inutile pour tout le
+  monde : le cœur met à jour `last_value_changed` à chaque état, et l'action « Vérifier la
+  présence » s'en sert ; republier « présent » périodiquement.
 - Une intégration `device` ne reçoit pas la langue de l'utilisateur, une action de scène non
   plus (un widget, si) : prévoir un champ de config `language`. Le superviseur injecte `TZ`, le
   fuseau de Gladys, dans le conteneur. La sandbox est limitée à 256 Mo.

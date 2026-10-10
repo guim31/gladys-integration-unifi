@@ -11,8 +11,9 @@ import {
   handleTestConnectionAction,
   publishDiscoveredDevicesInChunks,
 } from './src/devices/index.js';
-import { isGatewayDevice } from './src/devices/gateway.js';
 import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
+import { createStatePublisher } from './src/statePublisher.js';
+import { createPoller } from './src/poller.js';
 import {
   WIDGET,
   buildNetworkContent,
@@ -26,8 +27,6 @@ const gladys = new GladysIntegration();
 let config = normalizeConfig();
 let unifiClient = null;
 let unifiWs = null;
-let presenceTimers = new Map();
-let knownPresenceStates = new Map();
 // The last poll, kept for the dashboard widgets: rendering one never calls
 // the controller.
 let snapshot = emptySnapshot();
@@ -66,16 +65,18 @@ function nudgeWidget(key) {
   }
 }
 
-/**
- * Remember the presence of a client; a change nudges the presence widget.
- */
-function setPresence(mac, state) {
-  const changed = knownPresenceStates.get(mac) !== state;
-  knownPresenceStates.set(mac, state);
-  if (changed) {
-    nudgeWidget(WIDGET.PRESENCE);
-  }
-}
+// Every state goes through the publisher: only the features of devices
+// created in Gladys, only the changes (see src/statePublisher.js).
+const publisher = createStatePublisher(gladys);
+const poller = createPoller({
+  gladys,
+  publisher,
+  getUnifiClient: () => unifiClient,
+  getConfig: () => config,
+  getSnapshot: () => snapshot,
+  onPresenceChanged: () => nudgeWidget(WIDGET.PRESENCE),
+});
+const { pollAllStates, updateClientPresence, scheduleClientOffline } = poller;
 
 /**
  * Initialize or re-initialize UniFi connection clients.
@@ -132,46 +133,22 @@ async function handleUniFiEvent(event) {
   }
 }
 
-/**
- * Update client presence with immediate 1 (online).
- */
-async function updateClientPresence(mac, state) {
-  if (presenceTimers.has(mac)) {
-    clearTimeout(presenceTimers.get(mac));
-    presenceTimers.delete(mac);
-  }
-
-  setPresence(mac, state);
-  const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
-  await gladys.publishState(featureId, state).catch(() => {});
-}
-
-/**
- * Schedule client offline (0) with configured hysteresis delay.
- */
-function scheduleClientOffline(mac) {
-  if (presenceTimers.has(mac)) {
-    clearTimeout(presenceTimers.get(mac));
-  }
-
-  const delayMs = (config.presence_offline_delay || 120) * 1000;
-  const timer = setTimeout(async () => {
-    logger.info(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
-    setPresence(mac, 0);
-    const featureId = gladys.externalId(`client:${mac.toLowerCase()}:presence`);
-    await gladys.publishState(featureId, 0).catch(() => {});
-    presenceTimers.delete(mac);
-  }, delayMs);
-
-  presenceTimers.set(mac, timer);
-}
-
 // --- Discovery ---------------------------------------------------------------
 gladys.onScanRequest(async () => {
   logger.info('onScanRequest -> publishing UniFi discovered devices');
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
   await publishDiscoveredDevicesInChunks(gladys, devices);
 });
+
+// A device just created (or updated) in Gladys: its states are published
+// right away, whatever was published before (the SDK has already added it to
+// `gladys.devices`).
+async function publishDeviceStates(device) {
+  publisher.forget((device?.features || []).map((f) => f.external_id));
+  await pollAllStates();
+}
+gladys.onDeviceCreated(publishDeviceStates);
+gladys.onDeviceUpdated(publishDeviceStates);
 
 // The user deleted the v1.5.2 "Switch PoE" device of a hardware: its PoE
 // ports go back on the hardware device, so publish the discovery again.
@@ -204,7 +181,7 @@ gladys.onSetValue(async (device, feature, value) => {
     const mac = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
 
     // Optimistic UI state update so Gladys UI toggle moves instantly without lag
-    await gladys.publishState(feature.external_id, value).catch(() => {});
+    await publisher.publish(feature.external_id, value, { force: true });
 
     try {
       if (isAccess) {
@@ -236,7 +213,7 @@ gladys.onSetValue(async (device, feature, value) => {
         err?.response?.data || err.message,
       );
       // Rollback UI toggle if operation failed
-      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
+      await publisher.publish(feature.external_id, value === 1 ? 0 : 1, { force: true });
       throw err;
     }
     return;
@@ -249,7 +226,7 @@ gladys.onSetValue(async (device, feature, value) => {
     const wlanId = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(suffix));
 
     // Optimistic UI state update so Gladys UI toggle moves instantly without lag
-    await gladys.publishState(feature.external_id, value).catch(() => {});
+    await publisher.publish(feature.external_id, value, { force: true });
 
     try {
       logger.info(
@@ -263,7 +240,7 @@ gladys.onSetValue(async (device, feature, value) => {
         err?.response?.data || err.message,
       );
       // Rollback UI toggle if operation failed
-      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
+      await publisher.publish(feature.external_id, value === 1 ? 0 : 1, { force: true });
       throw err;
     }
     return;
@@ -280,7 +257,7 @@ gladys.onSetValue(async (device, feature, value) => {
     const mode = value === 1 ? 'auto' : 'off';
 
     // Optimistic UI state update so Gladys UI toggle moves instantly without lag
-    await gladys.publishState(feature.external_id, value).catch(() => {});
+    await publisher.publish(feature.external_id, value, { force: true });
 
     try {
       logger.info(`[UniFi Action] Setting PoE port ${portIdx} on switch ${deviceMac} = ${mode}`);
@@ -294,7 +271,7 @@ gladys.onSetValue(async (device, feature, value) => {
         err?.response?.data || err.message,
       );
       // Rollback UI toggle if operation failed
-      await gladys.publishState(feature.external_id, value === 1 ? 0 : 1).catch(() => {});
+      await publisher.publish(feature.external_id, value === 1 ? 0 : 1, { force: true });
       throw err;
     }
     return;
@@ -304,7 +281,6 @@ gladys.onSetValue(async (device, feature, value) => {
 });
 
 let pollIntervalTimer = null;
-let isPolling = false;
 
 function startInternalPolling() {
   if (pollIntervalTimer) clearInterval(pollIntervalTimer);
@@ -312,133 +288,6 @@ function startInternalPolling() {
   pollIntervalTimer = setInterval(async () => {
     await pollAllStates();
   }, 30000);
-}
-
-// --- Periodic & Initial Polling ------------------------------------------------
-async function pollAllStates() {
-  if (!unifiClient || isPolling) return;
-  isPolling = true;
-
-  try {
-    // 1. Poll active clients presence
-    const activeClients = await unifiClient.getClients();
-    snapshot.clients = activeClients;
-    // The widgets have something to show from here on, whatever the later
-    // steps do (a restricted API key may fail stat/device every time).
-    snapshot.polled = true;
-    const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
-
-    for (const client of activeClients) {
-      if (!client.mac) continue;
-      const mac = client.mac.toLowerCase();
-      await updateClientPresence(mac, 1);
-    }
-
-    // 2. Poll known clients for authoritative internet access (blocked state) & offline presence
-    try {
-      const knownClients = await unifiClient.getKnownClients();
-      for (const kClient of knownClients) {
-        if (!kClient.mac) continue;
-        const mac = kClient.mac.toLowerCase();
-
-        const isBlocked = Boolean(kClient.blocked);
-        const accessValue = isBlocked ? 0 : 1;
-        const internetFeatureId = gladys.externalId(`client:${mac}:access`);
-        const legacyInternetFeatureId = gladys.externalId(`client-internet:${mac}:access`);
-        await gladys.publishState(internetFeatureId, accessValue).catch(() => {});
-        await gladys.publishState(legacyInternetFeatureId, accessValue).catch(() => {});
-
-        if (!activeMacs.has(mac)) {
-          if (!presenceTimers.has(mac)) {
-            setPresence(mac, 0);
-            const featureId = gladys.externalId(`client:${mac}:presence`);
-            await gladys.publishState(featureId, 0).catch(() => {});
-          }
-        }
-      }
-    } catch {
-      // Ignore if getKnownClients fails
-    }
-
-    // 3. Poll Infrastructure devices (Gateways, APs, Switches)
-    const devices = await unifiClient.getDevices();
-    snapshot.devices = devices;
-    for (const dev of devices) {
-      if (!dev.mac) continue;
-      const mac = dev.mac.toLowerCase();
-      const isGateway = isGatewayDevice(dev);
-
-      // Publish Status for ALL infrastructure devices (U6+, U6 Pro, Switches, Gateways)
-      const statusFeatureId = gladys.externalId(`gateway:${mac}:status`);
-      await gladys.publishState(statusFeatureId, dev.state === 1 ? 1 : 0).catch(() => {});
-
-      // Publish PoE port status on Switches/Gateways
-      if (Array.isArray(dev.port_table)) {
-        for (const port of dev.port_table) {
-          if (port.poe_caps && port.poe_caps > 0 && port.port_idx) {
-            const portIdx = port.port_idx;
-            const poeFeatureId = gladys.externalId(`poe:${mac}:${portIdx}:power`);
-            const isPoeOn = Boolean(port.poe_mode && port.poe_mode !== 'off');
-            await gladys.publishState(poeFeatureId, isPoeOn ? 1 : 0).catch(() => {});
-          }
-        }
-      }
-
-      if (isGateway) {
-        const rxRate =
-          dev.stat?.gw?.wan_rx_bytes_r ??
-          dev.stat?.wan_rx_bytes_r ??
-          dev.uplink?.rx_bytes_r ??
-          dev.uplink?.rx_rate ??
-          dev.wan1?.rx_bytes_r ??
-          0;
-        const txRate =
-          dev.stat?.gw?.wan_tx_bytes_r ??
-          dev.stat?.wan_tx_bytes_r ??
-          dev.uplink?.tx_bytes_r ??
-          dev.uplink?.tx_rate ??
-          dev.wan1?.tx_bytes_r ??
-          0;
-
-        const rxSpeedMbps = Math.round((rxRate * 8) / 1000000);
-        const txSpeedMbps = Math.round((txRate * 8) / 1000000);
-
-        await gladys
-          .publishState(gladys.externalId(`gateway:${mac}:wan-down`), rxSpeedMbps)
-          .catch(() => {});
-        await gladys
-          .publishState(gladys.externalId(`gateway:${mac}:wan-up`), txSpeedMbps)
-          .catch(() => {});
-      }
-    }
-
-    // 4. Poll Wi-Fi SSID Networks state
-    try {
-      const wlans = await unifiClient.getWlans();
-      snapshot.wlans = wlans;
-      for (const wlan of wlans) {
-        if (!wlan._id && !wlan.name) continue;
-        const wlanId = String(wlan._id || wlan.name);
-        const featureId = gladys.externalId(`wifi:${wlanId}:state`);
-        const isEnabled = wlan.enabled !== false;
-        await gladys.publishState(featureId, isEnabled ? 1 : 0).catch(() => {});
-      }
-    } catch {
-      // Ignore if getWlans fails
-    }
-
-    // 5. Subsystem health (Internet state of the network widget)
-    try {
-      const health = await unifiClient.getHealth();
-      snapshot.health = Array.isArray(health?.data) ? health.data : [];
-    } catch {
-      // Ignore if getHealth fails
-    }
-  } catch (err) {
-    logger.warn('Polling UniFi state error:', err.message);
-  } finally {
-    isPolling = false;
-  }
 }
 
 gladys.onPoll(async () => {
@@ -465,7 +314,7 @@ gladys.onWidgetGet(WIDGET.NETWORK, async ({ settings }) => {
 gladys.onWidgetGet(WIDGET.PRESENCE, async ({ settings }) => {
   return buildPresenceContent({
     gladysDevices: await gladysDevices(),
-    presence: knownPresenceStates,
+    presence: poller.knownPresenceStates,
     settings,
   });
 });
@@ -485,6 +334,7 @@ gladys.onConfigUpdated(async (newConfig) => {
   config = normalizeConfig(newConfig);
   // Another console or site: the widgets must not show the previous one.
   snapshot = emptySnapshot();
+  publisher.reset();
   await initUniFiConnection();
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
   await publishDiscoveredDevicesInChunks(gladys, devices);
@@ -495,6 +345,8 @@ gladys.onConfigUpdated(async (newConfig) => {
 gladys.on('connected', async () => {
   try {
     config = normalizeConfig(await gladys.getConfig());
+    // Gladys may have restarted: publish every state again.
+    publisher.reset();
     await initUniFiConnection();
     const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
     await publishDiscoveredDevicesInChunks(gladys, devices);
@@ -514,10 +366,7 @@ gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   if (unifiWs) unifiWs.close();
-  for (const timer of presenceTimers.values()) {
-    clearTimeout(timer);
-  }
-  presenceTimers.clear();
+  poller.clearTimers();
   for (const entry of widgetNudges.values()) {
     if (entry.timer) clearTimeout(entry.timer);
   }
