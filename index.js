@@ -12,6 +12,7 @@ import {
   publishDiscoveredDevicesInChunks,
 } from './src/devices/index.js';
 import { isGatewayDevice } from './src/devices/gateway.js';
+import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
 import {
   WIDGET,
   buildNetworkContent,
@@ -168,6 +169,17 @@ function scheduleClientOffline(mac) {
 // --- Discovery ---------------------------------------------------------------
 gladys.onScanRequest(async () => {
   logger.info('onScanRequest -> publishing UniFi discovered devices');
+  const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
+  await publishDiscoveredDevicesInChunks(gladys, devices);
+});
+
+// The user deleted the v1.5.2 "Switch PoE" device of a hardware: its PoE
+// ports go back on the hardware device, so publish the discovery again.
+gladys.onDeviceDeleted(async (device) => {
+  if (!legacyPoeSwitchBlueprint.macOf(gladys, device?.external_id)) {
+    return;
+  }
+  logger.info(`Legacy PoE switch ${device.external_id} deleted -> publishing UniFi discovery`);
   const devices = await buildDiscoveredDevices(gladys, config, unifiClient);
   await publishDiscoveredDevicesInChunks(gladys, devices);
 });

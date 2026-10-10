@@ -17,6 +17,17 @@ export function createFakeGladys() {
 
     externalId,
 
+    // The devices created by the user (`GET /device`); `getDevicesError` makes
+    // the host call fail, `devices` is then the SDK's last known copy.
+    devices: [],
+    getDevicesError: null,
+    async getDevices() {
+      if (this.getDevicesError) {
+        throw this.getDevicesError;
+      }
+      return this.devices;
+    },
+
     // Same shape as the SDK: `externalIds(t, id).feature(k)` === `externalId(\`${t}:${id}:${k}\`)`.
     externalIds(type, platformId) {
       const device = externalId(`${type}:${platformId}`);

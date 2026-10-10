@@ -5,9 +5,40 @@
 import { logger } from '@gladysassistant/integration-sdk';
 import { gatewayBlueprint } from './gateway.js';
 import { clientBlueprint } from './clientPresence.js';
+import { hasPoePorts, legacyPoeSwitchBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
 
-export const DEVICE_BLUEPRINTS = [gatewayBlueprint, clientBlueprint, wifiNetworkBlueprint];
+export const DEVICE_BLUEPRINTS = [
+  gatewayBlueprint,
+  clientBlueprint,
+  wifiNetworkBlueprint,
+  legacyPoeSwitchBlueprint,
+];
+
+/**
+ * The MACs of the hardware whose v1.5.2 "Switch PoE" device still exists in
+ * Gladys. Read from the host (`GET /device`); when it does not answer, from
+ * the SDK's copy (`gladys.devices`, kept up to date by the created / deleted
+ * events), so a passing failure does not put the ports back on the hardware
+ * device -- whose update would then fail again in HTTP 409.
+ */
+export async function findLegacyPoeSwitchMacs(gladys) {
+  let created;
+  try {
+    created = await gladys.getDevices();
+  } catch (err) {
+    logger.warn('getDevices failed, using the last known devices:', err.message);
+    created = gladys.devices;
+  }
+  const macs = new Set();
+  for (const device of Array.isArray(created) ? created : []) {
+    const mac = legacyPoeSwitchBlueprint.macOf(gladys, device?.external_id);
+    if (mac) {
+      macs.add(mac);
+    }
+  }
+  return macs;
+}
 
 /**
  * Perform dynamic scan of all UniFi infrastructure devices, clients, PoE ports, and WLANs.
@@ -36,12 +67,20 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
     if (config?.discover_infrastructure !== false) {
       const devices = await unifiClient.getDevices();
       logger.info(`UniFi getDevices returned ${devices.length} infrastructure device(s).`);
+      const legacyPoeMacs = await findLegacyPoeSwitchMacs(gladys);
       for (const dev of devices) {
         if (dev.mac) {
+          const mac = dev.mac.toLowerCase();
           // One hardware = one device: status, WAN metrics and PoE ports are
-          // all features of the same device (see gateway.js).
-          discovered.push(gatewayBlueprint.buildDevice(gladys, dev));
-          addedMacs.add(dev.mac.toLowerCase());
+          // all features of the same device (see gateway.js)... unless the
+          // user added the "Switch PoE" device of v1.5.2, which keeps its
+          // ports (same feature external_ids: they cannot be on both).
+          const legacy = legacyPoeMacs.has(mac) && hasPoePorts(dev);
+          discovered.push(gatewayBlueprint.buildDevice(gladys, dev, { withPoePorts: !legacy }));
+          if (legacy) {
+            discovered.push(legacyPoeSwitchBlueprint.buildDevice(gladys, dev));
+          }
+          addedMacs.add(mac);
         }
       }
     } else {

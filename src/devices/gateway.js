@@ -36,7 +36,15 @@ export const gatewayBlueprint = {
     return gladys.externalIds('gateway', deviceMac.toLowerCase()).device;
   },
 
-  buildDevice(gladys, unifiDevice) {
+  /**
+   * @param {object} gladys the SDK object
+   * @param {object} unifiDevice a UniFi device of `stat/device`
+   * @param {object} [options]
+   * @param {boolean} [options.withPoePorts=true] false while the v1.5.2
+   *   "Switch PoE" device of this hardware still exists in Gladys: it owns the
+   *   PoE features (see legacyPoeSwitchBlueprint).
+   */
+  buildDevice(gladys, unifiDevice, { withPoePorts = true } = {}) {
     const mac = unifiDevice.mac.toLowerCase();
     const cleanMac = mac.replace(/[^a-z0-9]/g, '');
     const deviceSelector = `unifi-gateway-${cleanMac}`;
@@ -90,7 +98,9 @@ export const gatewayBlueprint = {
     }
 
     // PoE port switches, when the hardware has PoE-capable ports.
-    features.push(...buildPoePortFeatures(gladys, unifiDevice, deviceSelector));
+    if (withPoePorts) {
+      features.push(...buildPoePortFeatures(gladys, unifiDevice, deviceSelector));
+    }
 
     const deviceIp = typeof unifiDevice.ip === 'string' ? unifiDevice.ip.trim() : '';
     const params = [{ name: 'MAC_ADDRESS', value: mac.toUpperCase() }];

@@ -32,6 +32,7 @@ The integration connects directly to your local UniFi console using a **local ad
 
 1. Save configuration in Gladys and click **Test UniFi Connection** to verify.
 2. Go to the **Discovery** tab in Gladys to import your Gateway, network clients, PoE ports, and Wi-Fi networks.
+3. If you added the "Switch PoE: …" device of version 1.5.2, it keeps the PoE ports of its hardware (same features, history and dashboards kept) and the hardware device updates without them. Delete that device if you prefer the ports on the hardware device: they come back there at the next discovery, with a new history.
 
 ## Dashboard widgets
 

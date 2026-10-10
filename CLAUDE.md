@@ -61,6 +61,17 @@ Release est donc une **minor** au moins, et le topic du forum doit le dire.
   Gladys d'un client sans nom vient de `getClientDisplayName()` (« Appareil 192.168.1.5 (ee:ff) »,
   « Apple (192.168.1.5) ») : `publicName()` retire les parenthèses qui contiennent une IP ou un
   fragment de MAC, et un nom réduit à une adresse devient « Appareil » / « Device ».
+- **Appareil hérité « Switch PoE » (v1.5.2)** : la v1.5.2 publiait les ports PoE dans un appareil
+  `…:poe-switch:<mac>`, la v1.6.0 les a remis dans l'appareil matériel avec les **mêmes**
+  `external_id` de fonctionnalités (`…:poe:<mac>:<port>:power`). Chez qui avait ajouté l'appareil
+  v1.5.2, « Mettre à jour » le matériel échouait en 409. Désormais la découverte lit
+  `gladys.getDevices()` (`GET /api/integration/v1/device`, présent dans le cœur v5.1.4 ; repli sur
+  `gladys.devices` si l'appel échoue) : tant qu'un `…:poe-switch:<mac>` existe, il est republié
+  avec la structure exacte de la v1.5.2 (`legacyPoeSwitchBlueprint`) et le matériel l'est sans
+  ports. `onDeviceDeleted` de cet appareil republie la découverte : les ports reviennent sur le
+  matériel. Poll et `onSetValue` ne lisent que l'`external_id` de la fonctionnalité : rien à
+  changer. `test/legacyPoeSwitch.test.js` rejoue le 409 avec un faux cœur
+  (`test/helpers/fakeCore.js`) qui refuse une fonctionnalité déjà détenue par un autre appareil.
 - Textes des widgets en objets `{ en, fr }` : le cœur choisit la langue, le code n'a pas besoin de
   `language`.
 
@@ -115,6 +126,13 @@ Vérifiés dans le code du cœur ou payés sur une intégration publiée. Ils va
 - Les **noms de fonctionnalités sont figés à la création**. Et quand une fonctionnalité est seule
   de son type sur l'appareil, le tableau de bord affiche le libellé générique du type à la place
   du nom publié (`getDeviceFeatureName` du front).
+- **Un `external_id` de fonctionnalité ne doit jamais changer d'appareil** d'une version à
+  l'autre. Le cœur exige un `external_id` de fonctionnalité unique sur toute la base : les
+  utilisateurs qui avaient ajouté l'ancien appareil ne peuvent plus ajouter ni mettre à jour le
+  nouveau (HTTP 409 `external_id must be unique`), et l'ancien appareil, plus publié, ne disparaît
+  pas de lui-même. Déplacer une fonctionnalité, c'est soit lui donner un nouvel `external_id`
+  (historique perdu), soit continuer à publier l'ancien appareil tant que `getDevices()` le
+  renvoie (voir « Switch PoE » ci-dessus).
 - Depuis Gladys 4.84, un changement de structure fait proposer « Mettre à jour » dans l'onglet
   Découverte (`structure_changed`) : plus besoin de supprimer et recréer l'appareil. Un
   changement des seules `supported_options` ne le déclenche pas.
