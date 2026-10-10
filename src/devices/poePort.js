@@ -52,3 +52,55 @@ export function buildPoePortFeatures(gladys, unifiDevice, deviceSelector) {
 
   return features;
 }
+
+/**
+ * Blueprint of the "Switch PoE : <name>" device of v1.5.2
+ * (`<selector>:poe-switch:<mac>`), kept for the users who added it then.
+ *
+ * Its PoE features carry the very `external_id` v1.6 puts back on the hardware
+ * device, and Gladys refuses a feature `external_id` already owned by another
+ * device (HTTP 409): while this device exists, its ports stay on it, with the
+ * v1.5.2 structure, and the hardware device is published without them.
+ */
+export const legacyPoeSwitchBlueprint = {
+  key: 'poe-switch',
+
+  deviceExternalId(gladys, deviceMac) {
+    return gladys.externalIds('poe-switch', deviceMac.toLowerCase()).device;
+  },
+
+  /**
+   * The lowercase MAC of a v1.5.2 "Switch PoE" device, or null for any other
+   * external_id.
+   */
+  macOf(gladys, deviceExternalId) {
+    const prefix = this.deviceExternalId(gladys, '');
+    if (typeof deviceExternalId !== 'string' || !deviceExternalId.startsWith(prefix)) {
+      return null;
+    }
+    return deviceExternalId.slice(prefix.length).toLowerCase() || null;
+  },
+
+  buildDevice(gladys, unifiDevice) {
+    const mac = unifiDevice.mac.toLowerCase();
+    const cleanMac = mac.replace(/[^a-z0-9]/g, '');
+    const deviceSelector = `unifi-poe-switch-${cleanMac}`;
+    const hardwareName = unifiDevice.name || unifiDevice.model || 'Switch';
+
+    const deviceIp = typeof unifiDevice.ip === 'string' ? unifiDevice.ip.trim() : '';
+    const params = [{ name: 'MAC_ADDRESS', value: mac.toUpperCase() }];
+    if (deviceIp) {
+      params.push({ name: 'IP_ADDRESS', value: deviceIp });
+    }
+
+    return {
+      name: `Switch PoE : ${hardwareName}`,
+      selector: deviceSelector,
+      external_id: this.deviceExternalId(gladys, mac),
+      model: `${unifiDevice.model || 'UniFi'} PoE Switch`,
+      poll_frequency: 60000,
+      features: buildPoePortFeatures(gladys, unifiDevice, deviceSelector),
+      params,
+    };
+  },
+};
