@@ -50,55 +50,89 @@ const MAX_STATUS_LABEL = 40;
 const MAX_STATUS_VALUE = 40;
 const MAX_TILE_VALUE = 12;
 
-const T = {
-  download: { en: 'Download', fr: 'Descendant' },
-  upload: { en: 'Upload', fr: 'Montant' },
-  clients: { en: 'Clients', fr: 'Clients' },
-  devices: { en: 'Devices', fr: 'Équipements' },
-  wanChart: { en: 'WAN throughput', fr: 'Débit WAN' },
-  internet: { en: 'Internet', fr: 'Internet' },
-  ok: { en: 'OK', fr: 'OK' },
-  down: { en: 'Down', fr: 'Coupé' },
-  degraded: { en: 'Degraded', fr: 'Dégradé' },
-  unknown: { en: 'Unknown', fr: 'Inconnu' },
-  wifiClients: { en: 'Wi-Fi', fr: 'Wi-Fi' },
-  wiredClients: { en: 'Wired', fr: 'Filaire' },
-  guests: { en: 'Guests', fr: 'Invités' },
-  offline: { en: 'Offline', fr: 'Hors ligne' },
+/**
+ * Every text the widgets show, in the four languages of the Gladys interface
+ * (en, fr, de, es); the core picks the user's one, English as fallback.
+ * Exported for the i18n test.
+ */
+export const WIDGET_TEXTS = {
+  download: { en: 'Download', fr: 'Descendant', de: 'Download', es: 'Descarga' },
+  upload: { en: 'Upload', fr: 'Montant', de: 'Upload', es: 'Subida' },
+  clients: { en: 'Clients', fr: 'Clients', de: 'Clients', es: 'Clientes' },
+  devices: { en: 'Devices', fr: 'Équipements', de: 'Geräte', es: 'Equipos' },
+  wanChart: { en: 'WAN throughput', fr: 'Débit WAN', de: 'WAN-Durchsatz', es: 'Caudal WAN' },
+  internet: { en: 'Internet', fr: 'Internet', de: 'Internet', es: 'Internet' },
+  ok: { en: 'OK', fr: 'OK', de: 'OK', es: 'OK' },
+  down: { en: 'Down', fr: 'Coupé', de: 'Unterbrochen', es: 'Cortado' },
+  degraded: { en: 'Degraded', fr: 'Dégradé', de: 'Eingeschränkt', es: 'Degradado' },
+  unknown: { en: 'Unknown', fr: 'Inconnu', de: 'Unbekannt', es: 'Desconocido' },
+  wifiClients: { en: 'Wi-Fi', fr: 'Wi-Fi', de: 'WLAN', es: 'Wi-Fi' },
+  wiredClients: { en: 'Wired', fr: 'Filaire', de: 'Kabelgebunden', es: 'Cableados' },
+  guests: { en: 'Guests', fr: 'Invités', de: 'Gäste', es: 'Invitados' },
+  offline: { en: 'Offline', fr: 'Hors ligne', de: 'Offline', es: 'Fuera de línea' },
   noPollYet: {
     en: 'Waiting for the first UniFi poll: the data appears within a minute once the controller is reachable.',
     fr: 'En attente du premier relevé UniFi : les données apparaissent sous une minute dès que le contrôleur répond.',
+    de: 'Warte auf die erste UniFi-Abfrage: Die Daten erscheinen innerhalb einer Minute, sobald der Controller antwortet.',
+    es: 'Esperando la primera consulta a UniFi: los datos aparecen en menos de un minuto en cuanto responde el controlador.',
   },
   noGateway: {
     en: 'No gateway found: WAN throughput needs a UniFi gateway (UCG, UDM, USG).',
     fr: 'Aucune passerelle : le débit WAN demande une passerelle UniFi (UCG, UDM, USG).',
+    de: 'Kein Gateway: Der WAN-Durchsatz braucht ein UniFi-Gateway (UCG, UDM, USG).',
+    es: 'Sin puerta de enlace UniFi (UCG, UDM, USG): no hay caudal WAN que mostrar.',
   },
-  present: { en: 'Present', fr: 'Présents' },
-  presentOne: { en: 'Present', fr: 'Présent' },
-  absent: { en: 'Absent', fr: 'Absent' },
+  present: { en: 'Present', fr: 'Présents', de: 'Anwesend', es: 'Presentes' },
+  presentOne: { en: 'Present', fr: 'Présent', de: 'Anwesend', es: 'Presente' },
+  absent: { en: 'Absent', fr: 'Absent', de: 'Abwesend', es: 'Ausente' },
   noClients: {
     en: 'No network client added to Gladys yet. Add your phones and devices from the Discovery tab of the integration: the widget lists them with their Gladys names.',
     fr: "Aucun client réseau ajouté à Gladys. Ajoutez vos téléphones et appareils depuis l'onglet Découverte de l'intégration : le widget les liste avec leurs noms Gladys.",
+    de: 'Noch kein Netzwerk-Client zu Gladys hinzugefügt. Füge deine Telefone und Geräte im Tab „Entdecken“ der Integration hinzu: Das Widget listet sie mit ihren Gladys-Namen auf.',
+    es: 'Todavía no hay clientes de red añadidos a Gladys. Añada sus teléfonos y dispositivos desde la pestaña «Descubrir» de la integración: el widget los muestra con sus nombres de Gladys.',
   },
-  nobodyHome: { en: 'Nobody is home.', fr: 'Personne à la maison.' },
-  others: (n) => ({ en: `+ ${n} more`, fr: `+ ${n} autres` }),
-  device: { en: 'Device', fr: 'Appareil' },
-  state: { en: 'State', fr: 'État' },
-  enabled: { en: 'Enabled', fr: 'Activé' },
-  disabled: { en: 'Disabled', fr: 'Désactivé' },
-  connected: { en: 'Connected clients', fr: 'Clients connectés' },
-  guestNetwork: { en: 'Guest network', fr: 'Réseau invités' },
-  yes: { en: 'Yes', fr: 'Oui' },
-  band: { en: 'Band', fr: 'Bande' },
-  security: { en: 'Security', fr: 'Sécurité' },
-  open: { en: 'Open', fr: 'Ouvert' },
-  enable: { en: 'Enable', fr: 'Activer' },
-  disable: { en: 'Disable', fr: 'Désactiver' },
+  nobodyHome: {
+    en: 'Nobody is home.',
+    fr: 'Personne à la maison.',
+    de: 'Niemand ist zu Hause.',
+    es: 'No hay nadie en casa.',
+  },
+  others: (n) => ({
+    en: `+ ${n} more`,
+    fr: `+ ${n} autres`,
+    de: `+ ${n} weitere`,
+    es: `+ ${n} más`,
+  }),
+  device: { en: 'Device', fr: 'Appareil', de: 'Gerät', es: 'Dispositivo' },
+  state: { en: 'State', fr: 'État', de: 'Status', es: 'Estado' },
+  enabled: { en: 'Enabled', fr: 'Activé', de: 'Aktiviert', es: 'Activado' },
+  disabled: { en: 'Disabled', fr: 'Désactivé', de: 'Deaktiviert', es: 'Desactivado' },
+  connected: {
+    en: 'Connected clients',
+    fr: 'Clients connectés',
+    de: 'Verbundene Clients',
+    es: 'Clientes conectados',
+  },
+  guestNetwork: {
+    en: 'Guest network',
+    fr: 'Réseau invités',
+    de: 'Gastnetzwerk',
+    es: 'Red de invitados',
+  },
+  yes: { en: 'Yes', fr: 'Oui', de: 'Ja', es: 'Sí' },
+  band: { en: 'Band', fr: 'Bande', de: 'Frequenzband', es: 'Banda' },
+  security: { en: 'Security', fr: 'Sécurité', de: 'Sicherheit', es: 'Seguridad' },
+  open: { en: 'Open', fr: 'Ouvert', de: 'Offen', es: 'Abierta' },
+  enable: { en: 'Enable', fr: 'Activer', de: 'Aktivieren', es: 'Activar' },
+  disable: { en: 'Disable', fr: 'Désactiver', de: 'Deaktivieren', es: 'Desactivar' },
   noWlan: {
     en: 'No Wi-Fi network known yet. Once the controller answers, add the SSID from the Discovery tab so the buttons can switch it.',
     fr: "Aucun réseau Wi-Fi connu. Dès que le contrôleur répond, ajoutez le SSID depuis l'onglet Découverte pour que les boutons puissent le commuter.",
+    de: 'Noch kein WLAN bekannt. Sobald der Controller antwortet, füge die SSID im Tab „Entdecken“ hinzu, damit die Schaltflächen sie schalten können.',
+    es: 'Todavía no se conoce ninguna red Wi-Fi. En cuanto responda el controlador, añada el SSID desde la pestaña «Descubrir» para que los botones puedan conmutarla.',
   },
 };
+const T = WIDGET_TEXTS;
 
 /** An empty snapshot: nothing polled yet. */
 export function emptySnapshot() {

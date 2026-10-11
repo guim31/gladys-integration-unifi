@@ -82,8 +82,15 @@ Release est donc une **minor** au moins, et le topic du forum doit le dire.
   `force` (état optimiste). `onDeviceCreated` / `onDeviceUpdated` oublient les dernières valeurs
   de l'appareil puis relancent un poll ; reconnexion et nouvelle configuration oublient tout. Le
   poll et la présence vivent dans `src/poller.js`, testable sans réseau.
-- Textes des widgets en objets `{ en, fr }` : le cœur choisit la langue, le code n'a pas besoin de
-  `language`.
+- **Quatre langues (11/10/2026)** : tout texte multilingue a exactement `en`, `fr`, `de`, `es`
+  (manifeste, `WIDGET_TEXTS` de `src/widgets.js`, `MESSAGES` de `src/messages.js`) ; le cœur choisit
+  la langue, le code n'a pas besoin de `language`. `test/i18n.test.js` le verrouille, avec la borne
+  de longueur de chaque texte (un nouveau texte de widget doit y être classé). Vocabulaire repris de
+  `de.json` / `es.json` du cœur (allemand tutoyé, espagnol vouvoyé ; onglet « Entdecken » /
+  « Descubrir »). Restent en une langue : les erreurs **levées** par une action (le SDK n'envoie
+  que `e.message`, en français ici) et les noms d'appareils et de fonctionnalités (aucun réglage de
+  langue, noms figés à la création). Pas de `docs/de.md` ni `docs/es.md` : l'integration-store
+  n'héberge que `en` et `fr` (`DOCS_LANGUAGES`), le cœur retombe sur `en`.
 
 ## SDK 0.9 → 0.14 (05/10/2026)
 

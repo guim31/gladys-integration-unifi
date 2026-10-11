@@ -157,6 +157,7 @@ export class UniFiClient {
       const health = await this.getHealth();
       return {
         success: true,
+        subsystems: health?.data?.length || 0,
         message: `Connexion réussie à UniFi Network (${health?.data?.length || 0} sous-système(s) actifs).`,
       };
     } catch (err) {

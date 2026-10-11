@@ -177,7 +177,12 @@ test('wlanBandOf and wlanSecurityOf read what the controller gives, null otherwi
   assert.equal(wlanBandOf({ wlan_band: 'both' }), '2.4 / 5 GHz');
   assert.equal(wlanBandOf({ wlan_bands: ['2g', '6g'] }), '2.4 GHz / 6 GHz');
   assert.equal(wlanBandOf({}), null);
-  assert.deepEqual(wlanSecurityOf({ security: 'open' }), { en: 'Open', fr: 'Ouvert' });
+  assert.deepEqual(wlanSecurityOf({ security: 'open' }), {
+    en: 'Open',
+    fr: 'Ouvert',
+    de: 'Offen',
+    es: 'Abierta',
+  });
   assert.equal(wlanSecurityOf({ security: 'wpapsk', wpa_mode: 'wpa2' }), 'WPA2');
   assert.equal(
     wlanSecurityOf({ security: 'wpapsk', wpa_mode: 'wpa2', wpa3_support: true }),
@@ -220,7 +225,7 @@ test('network: live WAN tiles and chart bound to the gateway features, counts, s
   assert.deepEqual(
     status.items.map((item) => [item.label.en, item.value, item.color]),
     [
-      ['Internet', { en: 'OK', fr: 'OK' }, 'success'],
+      ['Internet', { en: 'OK', fr: 'OK', de: 'OK', es: 'OK' }, 'success'],
       ['Wi-Fi', 3, 'info'],
       ['Wired', 1, 'info'],
       ['Guests', 1, 'info'],
@@ -413,7 +418,12 @@ test('presence: beyond ten rows, a caption counts the others', () => {
   assert.equal(byType(content, 'status')[0].items.length, 10);
   const [caption] = byType(content, 'text');
   assert.equal(caption.variant, 'caption');
-  assert.deepEqual(caption.text, { en: '+ 4 more', fr: '+ 4 autres' });
+  assert.deepEqual(caption.text, {
+    en: '+ 4 more',
+    fr: '+ 4 autres',
+    de: '+ 4 weitere',
+    es: '+ 4 más',
+  });
 });
 
 test('presence: no client device in Gladys is an explicit body text, never an error', () => {
@@ -450,8 +460,8 @@ test('presence: default client names lose their IP and MAC, a bare address becom
       'Appareil',
       'Apple',
       'Samsung',
-      { en: 'Device', fr: 'Appareil' },
-      { en: 'Device', fr: 'Appareil' },
+      { en: 'Device', fr: 'Appareil', de: 'Gerät', es: 'Dispositivo' },
+      { en: 'Device', fr: 'Appareil', de: 'Gerät', es: 'Dispositivo' },
     ],
   );
 });
@@ -483,7 +493,7 @@ test('wifi: the SSID as heading, its state and clients, two device_feature butto
   assert.deepEqual(
     status.items.map((item) => [item.label.en, item.value]),
     [
-      ['State', { en: 'Enabled', fr: 'Activé' }],
+      ['State', { en: 'Enabled', fr: 'Activé', de: 'Aktiviert', es: 'Activado' }],
       ['Connected clients', 2],
       ['Band', '2.4 / 5 GHz'],
       ['Security', 'WPA2'],
@@ -512,11 +522,15 @@ test('wifi: the network setting picks the SSID; a disabled guest network', () =>
   assert.deepEqual(
     status.items.map((item) => [item.label.en, item.value, item.color]),
     [
-      ['State', { en: 'Disabled', fr: 'Désactivé' }, 'neutral'],
+      [
+        'State',
+        { en: 'Disabled', fr: 'Désactivé', de: 'Deaktiviert', es: 'Desactivado' },
+        'neutral',
+      ],
       ['Connected clients', 1, 'info'],
-      ['Guest network', { en: 'Yes', fr: 'Oui' }, 'info'],
+      ['Guest network', { en: 'Yes', fr: 'Oui', de: 'Ja', es: 'Sí' }, 'info'],
       ['Band', '5 GHz', undefined],
-      ['Security', { en: 'Open', fr: 'Ouvert' }, undefined],
+      ['Security', { en: 'Open', fr: 'Ouvert', de: 'Offen', es: 'Abierta' }, undefined],
     ],
   );
   assert.equal(

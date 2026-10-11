@@ -14,6 +14,7 @@ import {
 import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
 import { createStatePublisher } from './src/statePublisher.js';
 import { createPoller } from './src/poller.js';
+import { MESSAGES } from './src/messages.js';
 import {
   WIDGET,
   buildNetworkContent,
@@ -104,12 +105,7 @@ async function initUniFiConnection() {
     startInternalPolling();
   } catch (err) {
     logger.error('Failed to initialize UniFi connection:', err.message);
-    await gladys
-      .setConnectionStatus(false, {
-        en: `Connection failed: ${err.message}`,
-        fr: `Échec de connexion : ${err.message}`,
-      })
-      .catch(() => {});
+    await gladys.setConnectionStatus(false, MESSAGES.connectionFailed(err.message)).catch(() => {});
   }
 }
 
