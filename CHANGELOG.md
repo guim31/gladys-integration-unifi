@@ -5,6 +5,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- German and Spanish translations, the two other languages of the Gladys interface: the configuration form, the "Test UniFi Connection" action and its result, the connection status, the store description, and the three dashboard widgets (labels, settings and content). A test now fails if a text misses one of the four languages or exceeds its length. Device and feature names are unchanged.
+
 ### Fixed
 
 - States are published only for the devices added to Gladys, and only when they change. Every poll published the presence and the Internet access of every known client, added or not: about 90 states every 30 seconds for 30 clients, close to the core's ceiling of 300 states a minute per integration (beyond which a whole batch is refused), and as many "not found (or not added to Gladys)" lines in the core's logs. "Present" is still sent again once a minute, so the "Check presence" scene action keeps seeing the device. A device added or updated in Gladys gets its states at once.

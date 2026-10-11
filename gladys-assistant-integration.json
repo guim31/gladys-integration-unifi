@@ -4,7 +4,9 @@
   "name": "UniFi Network",
   "description": {
     "en": "Ubiquiti UniFi integration for UCG, UDM, Switches, APs and network presence tracking.",
-    "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence."
+    "fr": "Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence.",
+    "de": "Ubiquiti-UniFi-Integration für UCG, UDM, Switches, APs und Anwesenheitserkennung im Netzwerk.",
+    "es": "Integración de Ubiquiti UniFi para UCG, UDM, switches, APs y detección de presencia en la red."
   },
   "version": "1.6.3",
   "docker_image": "ghcr.io/guim31/gladys-integration-unifi:1.6.3",
@@ -18,11 +20,15 @@
       "type": "section",
       "label": {
         "en": "Local UniFi Connection",
-        "fr": "Connexion Locale UniFi OS"
+        "fr": "Connexion Locale UniFi OS",
+        "de": "Lokale UniFi-Verbindung",
+        "es": "Conexión local a UniFi OS"
       },
       "description": {
         "en": "Select your authentication mode and enter your local UniFi credentials or local API key.",
-        "fr": "Sélectionnez le mode d'authentification et entrez vos identifiants locaux UniFi ou votre clé API locale."
+        "fr": "Sélectionnez le mode d'authentification et entrez vos identifiants locaux UniFi ou votre clé API locale.",
+        "de": "Wähle die Authentifizierungsart und gib deine lokalen UniFi-Zugangsdaten oder deinen lokalen API-Schlüssel ein.",
+        "es": "Elija el modo de autenticación e introduzca sus credenciales locales de UniFi o su clave de API local."
       }
     },
     {
@@ -30,11 +36,15 @@
       "type": "string",
       "label": {
         "en": "IP Address / Hostname",
-        "fr": "Adresse IP / Hôte"
+        "fr": "Adresse IP / Hôte",
+        "de": "IP-Adresse / Hostname",
+        "es": "Dirección IP / Nombre de host"
       },
       "description": {
         "en": "IP address of your UniFi OS console (e.g. 192.168.1.1).",
-        "fr": "Adresse IP de votre console UniFi OS (ex: 192.168.1.1)."
+        "fr": "Adresse IP de votre console UniFi OS (ex: 192.168.1.1).",
+        "de": "IP-Adresse deiner UniFi-OS-Konsole (z. B. 192.168.1.1).",
+        "es": "Dirección IP de su consola UniFi OS (p. ej., 192.168.1.1)."
       },
       "required": true,
       "default": "192.168.1.1"
@@ -44,7 +54,9 @@
       "type": "number",
       "label": {
         "en": "Port",
-        "fr": "Port"
+        "fr": "Port",
+        "de": "Port",
+        "es": "Puerto"
       },
       "required": true,
       "default": 443,
@@ -56,7 +68,9 @@
       "type": "select",
       "label": {
         "en": "Authentication Mode",
-        "fr": "Mode d'authentification"
+        "fr": "Mode d'authentification",
+        "de": "Authentifizierung",
+        "es": "Modo de autenticación"
       },
       "required": true,
       "default": "api_key",
@@ -65,14 +79,18 @@
           "value": "api_key",
           "label": {
             "en": "Local API Key (UniFi Network > Integrations - Recommended)",
-            "fr": "Clé API Locale (UniFi Network > Intégrations - Recommandé)"
+            "fr": "Clé API Locale (UniFi Network > Intégrations - Recommandé)",
+            "de": "Lokaler API-Schlüssel (UniFi Network > Integrationen – empfohlen)",
+            "es": "Clave de API local (UniFi Network > Integraciones – recomendado)"
           }
         },
         {
           "value": "credentials",
           "label": {
             "en": "Local Username & Password",
-            "fr": "Nom d'utilisateur & Mot de passe local"
+            "fr": "Nom d'utilisateur & Mot de passe local",
+            "de": "Lokaler Benutzername & Passwort",
+            "es": "Nombre de usuario y contraseña locales"
           }
         }
       ]
@@ -82,11 +100,15 @@
       "type": "secret",
       "label": {
         "en": "Local API Key",
-        "fr": "Clé API Locale"
+        "fr": "Clé API Locale",
+        "de": "Lokaler API-Schlüssel",
+        "es": "Clave de API local"
       },
       "description": {
         "en": "API Key generated in UniFi Network > Integrations.",
-        "fr": "Clé API générée dans UniFi Network > Intégrations."
+        "fr": "Clé API générée dans UniFi Network > Intégrations.",
+        "de": "In UniFi Network > Integrationen erzeugter API-Schlüssel.",
+        "es": "Clave de API generada en UniFi Network > Integraciones."
       },
       "required": false
     },
@@ -95,11 +117,15 @@
       "type": "string",
       "label": {
         "en": "Local Username",
-        "fr": "Nom d'utilisateur local"
+        "fr": "Nom d'utilisateur local",
+        "de": "Lokaler Benutzername",
+        "es": "Nombre de usuario local"
       },
       "description": {
         "en": "Local admin username created in Console > Users & Admins (required if Credentials mode selected).",
-        "fr": "Nom d'admin local créé dans Console > Utilisateurs & Admins (requis si mode Identifiants)."
+        "fr": "Nom d'admin local créé dans Console > Utilisateurs & Admins (requis si mode Identifiants).",
+        "de": "Lokaler Admin-Benutzer, angelegt unter Konsole > Benutzer & Admins (nötig im Modus Benutzername & Passwort).",
+        "es": "Usuario administrador local creado en Consola > Usuarios y administradores (obligatorio en el modo usuario y contraseña)."
       },
       "required": false
     },
@@ -108,7 +134,9 @@
       "type": "secret",
       "label": {
         "en": "Local Password",
-        "fr": "Mot de passe local"
+        "fr": "Mot de passe local",
+        "de": "Lokales Passwort",
+        "es": "Contraseña local"
       },
       "required": false
     },
@@ -117,7 +145,9 @@
       "type": "string",
       "label": {
         "en": "Site ID",
-        "fr": "ID du Site"
+        "fr": "ID du Site",
+        "de": "Site-ID",
+        "es": "ID del sitio"
       },
       "required": true,
       "default": "default"
@@ -127,11 +157,15 @@
       "type": "number",
       "label": {
         "en": "Presence Offline Delay (s)",
-        "fr": "Délai de déconnexion présence (s)"
+        "fr": "Délai de déconnexion présence (s)",
+        "de": "Abwesenheitsverzögerung (s)",
+        "es": "Retardo de ausencia (s)"
       },
       "description": {
         "en": "Inactivity delay before marking a device as absent (prevents deep sleep toggling).",
-        "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les faux positifs en veille)."
+        "fr": "Délai d'inactivité avant d'indiquer un appareil absent (évite les faux positifs en veille).",
+        "de": "Inaktivitätsdauer, bevor ein Gerät als abwesend gilt (verhindert Fehlalarme im Ruhemodus).",
+        "es": "Tiempo de inactividad antes de marcar un dispositivo como ausente (evita falsos cambios en reposo)."
       },
       "required": false,
       "default": 120,
@@ -143,11 +177,15 @@
       "type": "section",
       "label": {
         "en": "Device Discovery & Filtering",
-        "fr": "Filtres de découverte des appareils"
+        "fr": "Filtres de découverte des appareils",
+        "de": "Geräteerkennung & Filter",
+        "es": "Detección y filtrado de dispositivos"
       },
       "description": {
         "en": "Configure which devices should be discovered and published to Gladys.",
-        "fr": "Configurez quels appareils doivent être découverts et envoyés à Gladys."
+        "fr": "Configurez quels appareils doivent être découverts et envoyés à Gladys.",
+        "de": "Lege fest, welche Geräte erkannt und an Gladys übermittelt werden.",
+        "es": "Configure qué dispositivos se detectan y se envían a Gladys."
       }
     },
     {
@@ -155,7 +193,9 @@
       "type": "boolean",
       "label": {
         "en": "Discover Infrastructure (Console, APs, Switches)",
-        "fr": "Découvrir l'infrastructure (Console, APs, Switches)"
+        "fr": "Découvrir l'infrastructure (Console, APs, Switches)",
+        "de": "Infrastruktur erkennen (Konsole, APs, Switches)",
+        "es": "Detectar la infraestructura (consola, APs, switches)"
       },
       "required": false,
       "default": true
@@ -165,7 +205,9 @@
       "type": "boolean",
       "label": {
         "en": "Discover Network Clients",
-        "fr": "Découvrir les clients du réseau"
+        "fr": "Découvrir les clients du réseau",
+        "de": "Netzwerk-Clients erkennen",
+        "es": "Detectar los clientes de la red"
       },
       "required": false,
       "default": true
@@ -175,11 +217,15 @@
       "type": "boolean",
       "label": {
         "en": "Only Connected Clients (Ignore historical known clients)",
-        "fr": "Clients connectés uniquement (Ignorer les anciens clients)"
+        "fr": "Clients connectés uniquement (Ignorer les anciens clients)",
+        "de": "Nur verbundene Clients (früher bekannte Clients ignorieren)",
+        "es": "Solo clientes conectados (ignorar los clientes antiguos)"
       },
       "description": {
         "en": "Only import currently connected clients to prevent importing hundreds of offline historical devices.",
-        "fr": "Importer uniquement les clients actuellement connectés pour éviter d'importer des centaines d'anciens appareils hors-ligne."
+        "fr": "Importer uniquement les clients actuellement connectés pour éviter d'importer des centaines d'anciens appareils hors-ligne.",
+        "de": "Nur aktuell verbundene Clients importieren, statt Hunderte früherer Geräte, die offline sind.",
+        "es": "Importar solo los clientes conectados ahora, para no importar cientos de dispositivos antiguos desconectados."
       },
       "required": false,
       "default": true
@@ -189,7 +235,9 @@
       "type": "select",
       "label": {
         "en": "Client Connection Type",
-        "fr": "Type de connexion des clients"
+        "fr": "Type de connexion des clients",
+        "de": "Verbindungsart der Clients",
+        "es": "Tipo de conexión de los clientes"
       },
       "required": false,
       "default": "all",
@@ -198,21 +246,27 @@
           "value": "all",
           "label": {
             "en": "All (Wi-Fi & Wired)",
-            "fr": "Tous (Wi-Fi et Filaire)"
+            "fr": "Tous (Wi-Fi et Filaire)",
+            "de": "Alle (WLAN & LAN-Kabel)",
+            "es": "Todos (Wi-Fi y cableados)"
           }
         },
         {
           "value": "wifi_only",
           "label": {
             "en": "Wi-Fi Only",
-            "fr": "Wi-Fi uniquement"
+            "fr": "Wi-Fi uniquement",
+            "de": "Nur WLAN",
+            "es": "Solo Wi-Fi"
           }
         },
         {
           "value": "wired_only",
           "label": {
             "en": "Wired Only",
-            "fr": "Filaire uniquement"
+            "fr": "Filaire uniquement",
+            "de": "Nur LAN-Kabel",
+            "es": "Solo cableados"
           }
         }
       ]
@@ -222,11 +276,15 @@
       "type": "string",
       "label": {
         "en": "Allowed Wi-Fi SSIDs",
-        "fr": "SSIDs Wi-Fi autorisés"
+        "fr": "SSIDs Wi-Fi autorisés",
+        "de": "Erlaubte WLAN-SSIDs",
+        "es": "SSID Wi-Fi permitidos"
       },
       "description": {
         "en": "Filter Wi-Fi clients by SSID names (comma separated, e.g. Home, IoT). Leave empty to allow all SSIDs.",
-        "fr": "Filtrer les clients Wi-Fi par noms de SSID (séparés par des virgules, ex: Maison, IoT). Laissez vide pour autoriser tous les SSIDs."
+        "fr": "Filtrer les clients Wi-Fi par noms de SSID (séparés par des virgules, ex: Maison, IoT). Laissez vide pour autoriser tous les SSIDs.",
+        "de": "WLAN-Clients nach SSID filtern (durch Kommas getrennt, z. B. Zuhause, IoT). Leer lassen, um alle SSIDs zuzulassen.",
+        "es": "Filtrar los clientes Wi-Fi por SSID (separados por comas, p. ej., Casa, IoT). Déjelo vacío para permitir todos los SSID."
       },
       "required": false,
       "default": ""
@@ -237,7 +295,9 @@
       "key": "test_connection",
       "label": {
         "en": "Test UniFi Connection",
-        "fr": "Tester la connexion UniFi"
+        "fr": "Tester la connexion UniFi",
+        "de": "UniFi-Verbindung testen",
+        "es": "Probar la conexión a UniFi"
       },
       "timeout_seconds": 30
     }
@@ -247,11 +307,15 @@
       "key": "network",
       "label": {
         "en": "Network",
-        "fr": "Réseau"
+        "fr": "Réseau",
+        "de": "Netzwerk",
+        "es": "Red"
       },
       "description": {
         "en": "WAN throughput, clients, UniFi hardware and Internet state at a glance.",
-        "fr": "Débit WAN, clients, équipements UniFi et état d'Internet en un coup d'œil."
+        "fr": "Débit WAN, clients, équipements UniFi et état d'Internet en un coup d'œil.",
+        "de": "WAN-Durchsatz, Clients, UniFi-Hardware und Internetstatus auf einen Blick.",
+        "es": "Caudal WAN, clientes, equipos UniFi y estado de Internet de un vistazo."
       },
       "icon": "globe",
       "settings": [
@@ -261,11 +325,15 @@
           "source": "devices",
           "label": {
             "en": "Gateway",
-            "fr": "Passerelle"
+            "fr": "Passerelle",
+            "de": "Gateway",
+            "es": "Puerta de enlace"
           },
           "description": {
             "en": "The gateway added to Gladys whose WAN throughput is shown. Leave empty for the first known gateway.",
-            "fr": "La passerelle ajoutée à Gladys dont le débit WAN est affiché. Laissez vide pour la première passerelle connue."
+            "fr": "La passerelle ajoutée à Gladys dont le débit WAN est affiché. Laissez vide pour la première passerelle connue.",
+            "de": "Das zu Gladys hinzugefügte Gateway, dessen WAN-Durchsatz angezeigt wird. Leer lassen für das erste bekannte Gateway.",
+            "es": "La puerta de enlace añadida a Gladys cuyo caudal WAN se muestra. Déjelo vacío para usar la primera conocida."
           },
           "required": false
         },
@@ -274,7 +342,9 @@
           "type": "select",
           "label": {
             "en": "Chart period",
-            "fr": "Période du graphique"
+            "fr": "Période du graphique",
+            "de": "Diagrammzeitraum",
+            "es": "Periodo del gráfico"
           },
           "required": false,
           "default": "last-hour",
@@ -283,21 +353,27 @@
               "value": "last-hour",
               "label": {
                 "en": "Last hour",
-                "fr": "Dernière heure"
+                "fr": "Dernière heure",
+                "de": "Letzte Stunde",
+                "es": "Última hora"
               }
             },
             {
               "value": "last-day",
               "label": {
                 "en": "Last day",
-                "fr": "Dernier jour"
+                "fr": "Dernier jour",
+                "de": "Letzte 24 Stunden",
+                "es": "Últimas 24 horas"
               }
             },
             {
               "value": "last-week",
               "label": {
                 "en": "Last week",
-                "fr": "Dernière semaine"
+                "fr": "Dernière semaine",
+                "de": "Letzte 7 Tage",
+                "es": "Últimos 7 días"
               }
             }
           ]
@@ -308,11 +384,15 @@
       "key": "presence",
       "label": {
         "en": "Presence",
-        "fr": "Présence"
+        "fr": "Présence",
+        "de": "Anwesenheit",
+        "es": "Presencia"
       },
       "description": {
         "en": "Who is home: the network clients added to Gladys, present first.",
-        "fr": "Qui est à la maison : les clients réseau ajoutés à Gladys, présents en premier."
+        "fr": "Qui est à la maison : les clients réseau ajoutés à Gladys, présents en premier.",
+        "de": "Wer ist zu Hause: die zu Gladys hinzugefügten Clients, Anwesende zuerst.",
+        "es": "Quién está en casa: los clientes de red añadidos a Gladys, presentes primero."
       },
       "icon": "users",
       "settings": [
@@ -321,7 +401,9 @@
           "type": "select",
           "label": {
             "en": "Show",
-            "fr": "Afficher"
+            "fr": "Afficher",
+            "de": "Anzeigen",
+            "es": "Mostrar"
           },
           "required": false,
           "default": "all",
@@ -330,14 +412,18 @@
               "value": "all",
               "label": {
                 "en": "Present and absent",
-                "fr": "Présents et absents"
+                "fr": "Présents et absents",
+                "de": "Anwesende und Abwesende",
+                "es": "Presentes y ausentes"
               }
             },
             {
               "value": "present",
               "label": {
                 "en": "Present only",
-                "fr": "Présents seulement"
+                "fr": "Présents seulement",
+                "de": "Nur Anwesende",
+                "es": "Solo presentes"
               }
             }
           ]
@@ -348,11 +434,15 @@
       "key": "wifi",
       "label": {
         "en": "Wi-Fi",
-        "fr": "Wi-Fi"
+        "fr": "Wi-Fi",
+        "de": "WLAN",
+        "es": "Wi-Fi"
       },
       "description": {
         "en": "One Wi-Fi network: its state, its clients, and two buttons to switch it.",
-        "fr": "Un réseau Wi-Fi : son état, ses clients, et deux boutons pour le commuter."
+        "fr": "Un réseau Wi-Fi : son état, ses clients, et deux boutons pour le commuter.",
+        "de": "Ein WLAN: sein Status, seine Clients und zwei Schaltflächen zum Ein- und Ausschalten.",
+        "es": "Una red Wi-Fi: su estado, sus clientes y dos botones para activarla o desactivarla."
       },
       "icon": "wifi",
       "settings": [
@@ -362,11 +452,15 @@
           "source": "devices",
           "label": {
             "en": "Wi-Fi network",
-            "fr": "Réseau Wi-Fi"
+            "fr": "Réseau Wi-Fi",
+            "de": "WLAN-Netzwerk",
+            "es": "Red Wi-Fi"
           },
           "description": {
             "en": "The Wi-Fi network (SSID) added to Gladys. Leave empty for the first known SSID.",
-            "fr": "Le réseau Wi-Fi (SSID) ajouté à Gladys. Laissez vide pour le premier SSID connu."
+            "fr": "Le réseau Wi-Fi (SSID) ajouté à Gladys. Laissez vide pour le premier SSID connu.",
+            "de": "Das zu Gladys hinzugefügte WLAN (SSID). Leer lassen für die erste bekannte SSID.",
+            "es": "La red Wi-Fi (SSID) añadida a Gladys. Déjelo vacío para usar el primer SSID conocido."
           },
           "required": false
         }

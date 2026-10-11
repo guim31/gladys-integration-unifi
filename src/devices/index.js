@@ -7,6 +7,7 @@ import { gatewayBlueprint } from './gateway.js';
 import { clientBlueprint } from './clientPresence.js';
 import { hasPoePorts, legacyPoeSwitchBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
+import { MESSAGES } from '../messages.js';
 
 export const DEVICE_BLUEPRINTS = [
   gatewayBlueprint,
@@ -182,8 +183,5 @@ export async function handleTestConnectionAction(gladys, unifiClient) {
   }
 
   const res = await unifiClient.testConnection();
-  return {
-    en: res.message,
-    fr: res.message,
-  };
+  return MESSAGES.testConnectionOk(res.subsystems ?? 0);
 }
