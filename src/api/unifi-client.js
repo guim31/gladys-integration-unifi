@@ -80,7 +80,7 @@ export class UniFiClient {
           this.cookies = setCookie;
         }
         this.isLoggedIn = true;
-        logger.info(`Successfully logged in to UniFi OS via ${endpoint}`);
+        logger.debug(`Successfully logged in to UniFi OS via ${endpoint}`);
         return true;
       } catch (err) {
         lastError = err;

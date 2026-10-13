@@ -67,7 +67,7 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
     // 1. Infrastructure Devices (Gateways, Switches & Access Points)
     if (config?.discover_infrastructure !== false) {
       const devices = await unifiClient.getDevices();
-      logger.info(`UniFi getDevices returned ${devices.length} infrastructure device(s).`);
+      logger.debug(`UniFi getDevices returned ${devices.length} infrastructure device(s).`);
       const legacyPoeMacs = await findLegacyPoeSwitchMacs(gladys);
       for (const dev of devices) {
         if (dev.mac) {
@@ -95,11 +95,11 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
 
       if (config?.only_active_clients === false) {
         knownClients = await unifiClient.getKnownClients();
-        logger.info(
+        logger.debug(
           `UniFi getClients returned ${activeClients.length} active client(s), getKnownClients returned ${knownClients.length} known client(s).`,
         );
       } else {
-        logger.info(
+        logger.debug(
           `UniFi getClients returned ${activeClients.length} active client(s). Known clients skipped (only_active_clients = true).`,
         );
       }
@@ -140,7 +140,7 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
     // 3. Wi-Fi SSID Networks
     if (config?.discover_infrastructure !== false) {
       const wlans = await unifiClient.getWlans();
-      logger.info(`UniFi getWlans returned ${wlans.length} wlan(s).`);
+      logger.debug(`UniFi getWlans returned ${wlans.length} wlan(s).`);
       for (const wlan of wlans) {
         discovered.push(wifiNetworkBlueprint.buildDevice(gladys, wlan));
       }
@@ -150,7 +150,8 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
       `UniFi Discovery scan completed successfully: ${discovered.length} device(s) found.`,
     );
   } catch (err) {
-    logger.error('Error during UniFi discovery scan:', err.message, err);
+    // The message only: an HTTP error object carries the request headers.
+    logger.error('Error during UniFi discovery scan:', err.message);
   }
 
   return discovered;
@@ -165,7 +166,7 @@ export async function publishDiscoveredDevicesInChunks(gladys, devices, chunkSiz
   }
   for (let i = 0; i < devices.length; i += chunkSize) {
     const chunk = devices.slice(i, i + chunkSize);
-    logger.info(
+    logger.debug(
       `Publishing discovered devices chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(
         devices.length / chunkSize,
       )} (${chunk.length} device(s))...`,
