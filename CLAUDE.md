@@ -2,23 +2,17 @@
 
 Intégration Ubiquiti UniFi pour UCG, UDM, Switches, APs et détection de présence.
 
-Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.14.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
+Intégration externe pour [Gladys Assistant](https://gladysassistant.com), bâtie sur le template officiel `GladysAssistant/integration-template-js` (SDK `@gladysassistant/integration-sdk` ^0.15.0, `gladys_version` `>=5.1.0`). Mainteneur : Guilhem (`guim31`).
 
 Ce fichier rassemble ce qu'une session de code doit savoir et qui ne se lit pas dans le code : choix de conception, faits vérifiés en réel, pièges déjà payés. Le compléter quand un nouveau piège est découvert.
 
-## État au 05/10/2026
+## État au 13/10/2026
 
-Version 1.5.2 publiée et indexée dans le store (SDK 0.9, Gladys ≥ 4.62, sans widget).
-
-Sur la branche `feat/dashboard-widgets` (PR #2), non fusionné : **trois widgets de tableau de bord** (`network`, `presence`,
-`wifi`), SDK monté en ^0.14.0 et `gladys_version` en `>=5.1.0`. Aucun test réel n'a été fait sur
-ces widgets : ni instance Gladys 5.1 ni contrôleur UniFi dans la session qui les a écrits. À
-vérifier par Guilhem avant Release : rendu des tuiles liées aux fonctionnalités `wan-down` /
-`wan-up`, état actif des boutons `device_feature` du widget Wi-Fi, et que `getHealth()` renvoie
-bien un sous-système `wan` sur la console (sinon « Internet : Inconnu »).
-
-Le passage à `>=5.1.0` coupe les mises à jour des Gladys plus anciens (voir pièges) : la prochaine
-Release est donc une **minor** au moins, et le topic du forum doit le dire.
+Version 1.7.0 publiée (SDK 0.14, Gladys ≥ 5.1.0, trois widgets `network`, `presence`, `wifi`,
+quatre langues). La branche `chore/sdk-0.15` passe au SDK 0.15, rend le poll indépendant du cœur
+(déjà le cas, désormais testé) et allège les logs. Les widgets n'ont toujours pas été vérifiés
+sur une vraie console par une session de code : rendu des tuiles `wan-down` / `wan-up`, état actif
+des boutons du widget Wi-Fi, sous-système `wan` de `getHealth()` (sinon « Internet : Inconnu »).
 
 ## Choix de conception
 
@@ -92,6 +86,31 @@ Release est donc une **minor** au moins, et le topic du forum doit le dire.
   langue, noms figés à la création). Pas de `docs/de.md` ni `docs/es.md` : l'integration-store
   n'héberge que `en` et `fr` (`DOCS_LANGUAGES`), le cœur retombe sur `en`.
 
+## Polling et logs (SDK 0.15, 13/10/2026)
+
+- **Le poll ne dépend pas du cœur.** Les appareils sont publiés avec `poll_frequency: 60000`
+  **sans** `should_poll` : Gladys 5.2.0 ne les sonde donc jamais (issue
+  GladysAssistant/Gladys#3198), et les appareils déjà créés ne recevront jamais `should_poll`,
+  même après correction du cœur (la Découverte ne propose « Mettre à jour » que sur un changement
+  de fonctionnalités). Ne pas ajouter `should_poll` pour autant : le minuteur interne suffit.
+- Le minuteur vit dans `src/poller.js` (`start` / `stop`, `POLL_INTERVAL_MS` = 30 s), lancé par
+  `initUniFiConnection()` quand la connexion à la console réussit, arrêté sur `disconnected`.
+  `onPoll` appelle `poller.onCorePoll()`, **repli** qui ne fait rien tant que le minuteur tourne :
+  un poll couvre tous les appareils, un cœur qui sonderait N appareils ferait sinon N polls.
+  `test/poller.test.js` le verrouille.
+- Si la connexion initiale échoue (console injoignable au démarrage, identifiants refusés), aucun
+  minuteur ne démarre : il faut une nouvelle configuration ou une reconnexion à Gladys. Comportement
+  antérieur, laissé tel quel.
+- **Logs** : rien au niveau `info` pour un cycle de poll normal, un événement WebSocket, un état
+  publié ou une réponse de la console (tout cela en `debug`, `LOG_LEVEL=debug`). Un poll en échec
+  est signalé une fois (`warn`), son rétablissement une fois (`info`) ; la WebSocket de même (une
+  perte, un « connection restored » après 5 s ouverte, tentatives en `debug`, l'avertissement
+  « closed immediately » du mode clé API une seule fois). Une action de Gladys (`onSetValue`)
+  écrit une ligne `info`. `test/poller.test.js` vérifie qu'un cycle normal n'écrit rien en `info`.
+- **Jamais d'objet d'erreur HTTP dans un log** : `util.inspect` d'une erreur axios affiche sa
+  `config`, donc l'en-tête `X-API-KEY` ou le cookie de session. Logger `err.message` (ou
+  `err.response.data`), jamais `err`.
+
 ## SDK 0.9 → 0.14 (05/10/2026)
 
 Vérifié par diff des deux paquets : **aucune méthode retirée ni signature changée**. La 0.14
@@ -132,9 +151,10 @@ Vérifiés dans le code du cœur ou payés sur une intégration publiée. Ils va
 
 - **Polling** : le planificateur n'interroge un appareil que si `should_poll: true` **et**
   `poll_frequency` vaut une valeur de la liste fixe (1000, 2000, 10000, 15000, 30000, 60000 ms).
-  Publier seulement `poll_frequency` donne un appareil accepté mais jamais interrogé. Pour une
-  cadence hors liste, publier `should_poll: false` et pousser les états depuis le conteneur, en
-  gardant un `onPoll` de repli.
+  Publier seulement `poll_frequency` donne un appareil accepté mais jamais interrogé (Gladys 5.2.0,
+  issue GladysAssistant/Gladys#3198, correctif pas encore publié), et un appareil **déjà créé** ne
+  reçoit jamais un `should_poll` ou un `poll_frequency` republié. Donc : sonder depuis le conteneur
+  par un minuteur interne, en gardant un `onPoll` de repli sans double travail.
 - **`min` et `max` sont NOT NULL** dans `t_device_feature`, y compris pour `text/text` : sans eux,
   « Ajouter à Gladys » échoue en HTTP 422. Mettre 0/0, comme Zigbee2MQTT.
 - `level-sensor/decimal` n'existe pas côté serveur. `light-sensor/binary` n'a pas de libellé dans

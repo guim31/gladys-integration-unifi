@@ -10,6 +10,12 @@
 import { logger } from '@gladysassistant/integration-sdk';
 import { isGatewayDevice } from './devices/gateway.js';
 
+// The poll runs on the container's own timer: Gladys 5.2.0 never polls the
+// devices of this integration (they are published with `poll_frequency` but
+// without `should_poll`, see GladysAssistant/Gladys#3198, and the devices
+// already created would not get it anyway).
+export const POLL_INTERVAL_MS = 30 * 1000;
+
 /**
  * @param {object} deps
  * @param {object} deps.gladys the SDK object (external ids)
@@ -30,6 +36,9 @@ export function createPoller({
   const presenceTimers = new Map();
   const knownPresenceStates = new Map();
   let isPolling = false;
+  let pollTimer = null;
+  // A failing poll is logged once, and its recovery once: not every 30 s.
+  let pollFailing = false;
 
   const presenceId = (mac) => gladys.externalId(`client:${mac.toLowerCase()}:presence`);
 
@@ -59,12 +68,29 @@ export function createPoller({
     }
     const delayMs = (getConfig().presence_offline_delay || 120) * 1000;
     const timer = setTimeout(async () => {
-      logger.info(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
+      logger.debug(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
       setPresence(mac, 0);
       await publisher.publish(presenceId(mac), 0);
       presenceTimers.delete(mac);
     }, delayMs);
     presenceTimers.set(mac, timer);
+  }
+
+  /**
+   * A real-time event of the console's WebSocket: EVT_WU_Connected /
+   * EVT_LU_Connected (Wi-Fi or wired client connected), EVT_WU_Disconnected /
+   * EVT_LU_Disconnected.
+   */
+  async function handleEvent(event) {
+    if (!event || !event.key || !event.user) return;
+    const mac = String(event.user).toLowerCase();
+    if (event.key.includes('Connected')) {
+      logger.debug(`UniFi event: Client connected -> ${mac}`);
+      await updateClientPresence(mac, 1);
+    } else if (event.key.includes('Disconnected')) {
+      logger.debug(`UniFi event: Client disconnected -> ${mac}`);
+      scheduleClientOffline(mac);
+    }
   }
 
   async function pollAllStates() {
@@ -179,14 +205,51 @@ export function createPoller({
       } catch {
         // Ignore if getHealth fails
       }
+      if (pollFailing) {
+        pollFailing = false;
+        logger.info('Polling UniFi state works again.');
+      }
     } catch (err) {
-      logger.warn('Polling UniFi state error:', err.message);
+      if (pollFailing) {
+        logger.debug('Polling UniFi state error (still failing):', err.message);
+      } else {
+        pollFailing = true;
+        logger.warn('Polling UniFi state error:', err.message);
+      }
     } finally {
       isPolling = false;
     }
   }
 
+  /** Poll every `intervalMs` from the container's own timer (restarts it). */
+  function start(intervalMs = POLL_INTERVAL_MS) {
+    stop();
+    pollTimer = setInterval(() => {
+      pollAllStates().catch((err) => logger.debug('Poll failed:', err.message));
+    }, intervalMs);
+  }
+
+  function stop() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  /**
+   * `onPoll` of the core, kept as a fallback should a future Gladys poll the
+   * devices: nothing to do while the internal timer runs (one poll covers
+   * every device, so N devices polled by the core would mean N polls).
+   */
+  async function onCorePoll() {
+    if (pollTimer) {
+      return;
+    }
+    await pollAllStates();
+  }
+
   function clearTimers() {
+    stop();
     for (const timer of presenceTimers.values()) {
       clearTimeout(timer);
     }
@@ -197,7 +260,12 @@ export function createPoller({
     knownPresenceStates,
     updateClientPresence,
     scheduleClientOffline,
+    handleEvent,
     pollAllStates,
+    start,
+    stop,
+    onCorePoll,
+    isRunning: () => pollTimer !== null,
     clearTimers,
   };
 }

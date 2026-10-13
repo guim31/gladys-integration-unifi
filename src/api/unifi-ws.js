@@ -2,6 +2,9 @@ import WebSocket from 'ws';
 import EventEmitter from 'node:events';
 import { logger } from '@gladysassistant/integration-sdk';
 
+// A connection that stays open this long after a loss counts as restored.
+const STABLE_MS = 5000;
+
 /**
  * UniFi Real-time WebSocket Client listening for network events.
  */
@@ -16,6 +19,11 @@ export class UniFiWebSocket extends EventEmitter {
     this.isClosedManually = false;
     this.connectTime = 0;
     this.rapidCloseCount = 0;
+    // A lost connection is logged once, and its return once (a connection
+    // that stays open STABLE_MS): the reconnection attempts go to debug.
+    this.reportedDown = false;
+    this.rapidCloseWarned = false;
+    this.stableTimer = null;
   }
 
   connect() {
@@ -26,7 +34,11 @@ export class UniFiWebSocket extends EventEmitter {
     const wsUrl = `wss://${this.config.unifi_host}:${this.config.unifi_port}/proxy/network/wss/s/${site}/events`;
     const headers = this.client.getHeaders();
 
-    logger.info(`Connecting to UniFi WebSocket events at ${wsUrl}...`);
+    if (this.reportedDown) {
+      logger.debug(`Connecting to UniFi WebSocket events at ${wsUrl}...`);
+    } else {
+      logger.info(`Connecting to UniFi WebSocket events at ${wsUrl}...`);
+    }
 
     try {
       this.connectTime = Date.now();
@@ -35,8 +47,22 @@ export class UniFiWebSocket extends EventEmitter {
         headers,
       });
 
+      const ws = this.ws;
       this.ws.on('open', () => {
-        logger.info('UniFi WebSocket connected successfully.');
+        if (this.reportedDown) {
+          logger.debug('UniFi WebSocket connected.');
+          this.stableTimer = setTimeout(() => {
+            this.stableTimer = null;
+            if (this.ws === ws && ws.readyState === WebSocket.OPEN) {
+              this.reportedDown = false;
+              this.rapidCloseWarned = false;
+              logger.info('UniFi WebSocket connection restored.');
+            }
+          }, STABLE_MS);
+          this.stableTimer.unref?.();
+        } else {
+          logger.info('UniFi WebSocket connected successfully.');
+        }
         this.emit('connected');
         this.startPing();
       });
@@ -55,7 +81,11 @@ export class UniFiWebSocket extends EventEmitter {
       });
 
       this.ws.on('error', (err) => {
-        logger.warn('UniFi WebSocket error:', err.message);
+        if (this.reportedDown) {
+          logger.debug('UniFi WebSocket error:', err.message);
+        } else {
+          logger.warn('UniFi WebSocket error:', err.message);
+        }
       });
 
       this.ws.on('close', (code, reason) => {
@@ -68,12 +98,18 @@ export class UniFiWebSocket extends EventEmitter {
           this.rapidCloseCount = 0;
         }
 
-        if (this.rapidCloseCount > 3) {
+        if (this.rapidCloseCount > 3 && !this.rapidCloseWarned) {
+          this.rapidCloseWarned = true;
           logger.warn(
             `UniFi WebSocket closed immediately (${code}). Local API Key mode on this UniFi OS version does not keep WS events open. Falling back to HTTP polling.`,
           );
+        } else if (this.isClosedManually || this.reportedDown) {
+          logger.debug(`UniFi WebSocket closed (${code}): ${reason}`);
         } else {
           logger.info(`UniFi WebSocket closed (${code}): ${reason}`);
+        }
+        if (!this.isClosedManually) {
+          this.reportedDown = true;
         }
 
         this.emit('disconnected');
@@ -111,6 +147,10 @@ export class UniFiWebSocket extends EventEmitter {
 
   clearTimers() {
     this.stopPing();
+    if (this.stableTimer) {
+      clearTimeout(this.stableTimer);
+      this.stableTimer = null;
+    }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -120,7 +160,7 @@ export class UniFiWebSocket extends EventEmitter {
   scheduleReconnect(delay = 10000) {
     this.clearTimers();
     this.reconnectTimer = setTimeout(() => {
-      logger.info('Attempting to reconnect UniFi WebSocket...');
+      logger.debug('Attempting to reconnect UniFi WebSocket...');
       this.connect();
     }, delay);
   }

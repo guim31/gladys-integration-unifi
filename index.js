@@ -13,7 +13,7 @@ import {
 } from './src/devices/index.js';
 import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
 import { createStatePublisher } from './src/statePublisher.js';
-import { createPoller } from './src/poller.js';
+import { createPoller, POLL_INTERVAL_MS } from './src/poller.js';
 import { MESSAGES } from './src/messages.js';
 import {
   WIDGET,
@@ -77,7 +77,7 @@ const poller = createPoller({
   getSnapshot: () => snapshot,
   onPresenceChanged: () => nudgeWidget(WIDGET.PRESENCE),
 });
-const { pollAllStates, updateClientPresence, scheduleClientOffline } = poller;
+const { pollAllStates } = poller;
 
 /**
  * Initialize or re-initialize UniFi connection clients.
@@ -97,7 +97,7 @@ async function initUniFiConnection() {
 
     // Start WebSocket for real-time presence/network events
     unifiWs = new UniFiWebSocket(config, unifiClient);
-    unifiWs.on('event', (event) => handleUniFiEvent(event));
+    unifiWs.on('event', (event) => poller.handleEvent(event));
     unifiWs.connect();
 
     await gladys.setConnectionStatus(true);
@@ -106,26 +106,6 @@ async function initUniFiConnection() {
   } catch (err) {
     logger.error('Failed to initialize UniFi connection:', err.message);
     await gladys.setConnectionStatus(false, MESSAGES.connectionFailed(err.message)).catch(() => {});
-  }
-}
-
-/**
- * Handle real-time WebSocket events from UniFi.
- */
-async function handleUniFiEvent(event) {
-  if (!event || !event.key) return;
-
-  // EVT_WU_Connected (Wireless client connected), EVT_LU_Connected (LAN connected)
-  if (event.key.includes('Connected') && event.user) {
-    const mac = event.user.toLowerCase();
-    logger.info(`UniFi event: Client connected -> ${mac}`);
-    updateClientPresence(mac, 1);
-  }
-  // EVT_WU_Disconnected, EVT_LU_Disconnected
-  else if (event.key.includes('Disconnected') && event.user) {
-    const mac = event.user.toLowerCase();
-    logger.info(`UniFi event: Client disconnected -> ${mac}`);
-    scheduleClientOffline(mac);
   }
 }
 
@@ -159,7 +139,7 @@ gladys.onDeviceDeleted(async (device) => {
 
 // --- Command Execution -------------------------------------------------------
 gladys.onSetValue(async (device, feature, value) => {
-  logger.info(`onSetValue <- ${feature.external_id} = ${value}`);
+  logger.debug(`onSetValue <- ${feature.external_id} = ${value}`);
   if (!unifiClient) {
     throw new Error('UniFi client is not connected.');
   }
@@ -185,22 +165,22 @@ gladys.onSetValue(async (device, feature, value) => {
         if (value === 1) {
           logger.info(`[UniFi Action] Unblocking internet access for MAC ${mac}`);
           const res = await unifiClient.unblockClient(mac);
-          logger.info(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
+          logger.debug(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
         } else {
           logger.info(`[UniFi Action] Blocking internet access for MAC ${mac}`);
           const res = await unifiClient.blockClient(mac);
-          logger.info(`[UniFi Action Response] Block MAC ${mac}:`, res);
+          logger.debug(`[UniFi Action Response] Block MAC ${mac}:`, res);
         }
       } else {
         // Legacy block switch: 1 = Blocked, 0 = Unblocked
         if (value === 1) {
           logger.info(`[UniFi Action] Blocking internet access (legacy) for MAC ${mac}`);
           const res = await unifiClient.blockClient(mac);
-          logger.info(`[UniFi Action Response] Block MAC ${mac}:`, res);
+          logger.debug(`[UniFi Action Response] Block MAC ${mac}:`, res);
         } else {
           logger.info(`[UniFi Action] Unblocking internet access (legacy) for MAC ${mac}`);
           const res = await unifiClient.unblockClient(mac);
-          logger.info(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
+          logger.debug(`[UniFi Action Response] Unblock MAC ${mac}:`, res);
         }
       }
     } catch (err) {
@@ -229,7 +209,7 @@ gladys.onSetValue(async (device, feature, value) => {
         `[UniFi Action] Setting Wi-Fi WLAN ${wlanId} state = ${value === 1 ? 'enabled' : 'disabled'}`,
       );
       const res = await unifiClient.setWlanState(wlanId, value === 1);
-      logger.info(`[UniFi Action Response] Wi-Fi WLAN ${wlanId}:`, res);
+      logger.debug(`[UniFi Action Response] Wi-Fi WLAN ${wlanId}:`, res);
     } catch (err) {
       logger.error(
         `[UniFi Action Error] Failed to set Wi-Fi WLAN ${wlanId} state:`,
@@ -260,7 +240,7 @@ gladys.onSetValue(async (device, feature, value) => {
       const res = await unifiClient.setPortPoeMode(deviceMac, [
         { port_idx: portIdx, poe_mode: mode },
       ]);
-      logger.info(`[UniFi Action Response] PoE port ${portIdx} on ${deviceMac}:`, res);
+      logger.debug(`[UniFi Action Response] PoE port ${portIdx} on ${deviceMac}:`, res);
     } catch (err) {
       logger.error(
         `[UniFi Action Error] Failed to set PoE mode on ${deviceMac} port ${portIdx}:`,
@@ -276,18 +256,17 @@ gladys.onSetValue(async (device, feature, value) => {
   throw new Error(`Unsupported feature command for ${feature.external_id}`);
 });
 
-let pollIntervalTimer = null;
-
+// The container polls on its own timer (Gladys 5.2.0 never polls these
+// devices, see src/poller.js); `onPoll` is only a fallback.
 function startInternalPolling() {
-  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
-  logger.info('Starting internal UniFi polling timer (every 30 seconds)...');
-  pollIntervalTimer = setInterval(async () => {
-    await pollAllStates();
-  }, 30000);
+  logger.info(
+    `Starting internal UniFi polling timer (every ${POLL_INTERVAL_MS / 1000} seconds)...`,
+  );
+  poller.start(POLL_INTERVAL_MS);
 }
 
 gladys.onPoll(async () => {
-  await pollAllStates();
+  await poller.onCorePoll();
 });
 
 // --- Dashboard widgets (Gladys 5.1+) -----------------------------------------
@@ -348,19 +327,20 @@ gladys.on('connected', async () => {
     await publishDiscoveredDevicesInChunks(gladys, devices);
     await pollAllStates();
   } catch (err) {
-    logger.error('Post-connection initialization failed:', err);
+    // The message only: an HTTP error object carries the request headers
+    // (API key, session cookie).
+    logger.error('Post-connection initialization failed:', err.message);
   }
 });
 
 gladys.on('disconnected', () => {
-  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
+  poller.stop();
   if (unifiWs) unifiWs.close();
 });
 
 // --- Graceful Shutdown -------------------------------------------------------
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
-  if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   if (unifiWs) unifiWs.close();
   poller.clearTimers();
   for (const entry of widgetNudges.values()) {
