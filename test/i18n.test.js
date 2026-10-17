@@ -141,6 +141,12 @@ const WIDGET_TEXT_BOUNDS = {
   nobodyHome: BODY,
   noClients: BODY,
   noWlan: BODY,
+  vpnServer: STATUS,
+  vpnClients: STATUS,
+  vpnClient: STATUS,
+  vpnOnline: STATUS,
+  megabytes: STATUS,
+  noVpn: BODY,
 };
 
 test('every widget text is in en, fr, de and es, within the bound of its component', () => {

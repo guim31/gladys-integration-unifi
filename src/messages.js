@@ -24,3 +24,8 @@ export const MESSAGES = {
     es: `Conexión establecida con UniFi Network (${subsystems} subsistema(s) activo(s)).`,
   }),
 };
+
+// Thrown (a plain string, see above): the option is named in French, the
+// language of the device names.
+export const VPN_READ_ONLY =
+  'VPN control is off: enable « Autoriser la commande du serveur VPN » in the configuration.';

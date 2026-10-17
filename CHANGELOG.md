@@ -5,6 +5,15 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- WireGuard VPN server of the gateway (UCG, UDM…): a device with its state and
+  the number of connected clients, a "WireGuard VPN" widget listing the
+  connected clients, and the "VPN client connected" / "VPN client
+  disconnected" scene triggers. Turning the server off from Gladys stays off
+  until "Allow the VPN server control" is ticked. Developed without a
+  WireGuard gateway at hand: feedback welcome.
+
 ### Changed
 
 - Quieter logs. A normal poll, a client coming or leaving and a published state no longer write anything at the default level (they are still there with `LOG_LEVEL=debug`). A console that cannot be reached is reported once, then once again when it answers; the same for the real-time connection, which no longer logs every reconnection attempt. An action from Gladys (Internet access, Wi-Fi network, PoE port) still writes one line.

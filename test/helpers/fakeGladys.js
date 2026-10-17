@@ -7,6 +7,7 @@ export function createFakeGladys() {
   const cameraImages = [];
   const transports = [];
   const connectionStatuses = [];
+  const sceneEvents = [];
   const externalId = (suffix) => `unifi:${suffix}`;
 
   return {
@@ -14,6 +15,10 @@ export function createFakeGladys() {
     cameraImages,
     transports,
     connectionStatuses,
+    sceneEvents,
+    async publishSceneEvent(key, data) {
+      sceneEvents.push({ key, data });
+    },
 
     externalId,
 

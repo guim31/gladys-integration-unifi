@@ -9,6 +9,13 @@
 
 import { logger } from '@gladysassistant/integration-sdk';
 import { isGatewayDevice } from './devices/gateway.js';
+import { isWireGuardServer, vpnClientKey, vpnClientName, vpnClientsOf } from './vpn.js';
+
+// Scene trigger keys (manifest `scene_triggers`): permanent once published.
+export const TRIGGERS = Object.freeze({
+  VPN_CONNECTED: 'vpn_client_connected',
+  VPN_DISCONNECTED: 'vpn_client_disconnected',
+});
 
 // The poll runs on the container's own timer: Gladys 5.2.0 never polls the
 // devices of this integration (they are published with `poll_frequency` but
@@ -24,6 +31,7 @@ export const POLL_INTERVAL_MS = 30 * 1000;
  * @param {() => object} deps.getConfig the current configuration
  * @param {() => object} deps.getSnapshot the snapshot of the widgets
  * @param {() => void} [deps.onPresenceChanged] a client came or left
+ * @param {() => void} [deps.onVpnChanged] the VPN server or its clients changed
  */
 export function createPoller({
   gladys,
@@ -32,7 +40,11 @@ export function createPoller({
   getConfig,
   getSnapshot,
   onPresenceChanged = () => {},
+  onVpnChanged = () => {},
 }) {
+  /** The connected clients of each WireGuard server at the last poll: id → Map(key → client). */
+  const vpnClients = new Map();
+  let vpnSignature = null;
   const presenceTimers = new Map();
   const knownPresenceStates = new Map();
   let isPolling = false;
@@ -198,7 +210,18 @@ export function createPoller({
         // Ignore if getWlans fails
       }
 
-      // 5. Subsystem health (Internet state of the network widget)
+      // 5. The WireGuard server(s) of the gateway: state, connected clients,
+      // and a scene event per client that comes or goes (none at the first
+      // reading: what was the state before?).
+      try {
+        const networks = (await unifiClient.getNetworks()).filter(isWireGuardServer);
+        snapshot.vpns = networks;
+        await pollVpn(networks, activeClients);
+      } catch (err) {
+        logger.debug('UniFi getNetworks failed:', err.message);
+      }
+
+      // 6. Subsystem health (Internet state of the network widget)
       try {
         const health = await unifiClient.getHealth();
         snapshot.health = Array.isArray(health?.data) ? health.data : [];
@@ -218,6 +241,54 @@ export function createPoller({
       }
     } finally {
       isPolling = false;
+    }
+  }
+
+  async function pollVpn(networks, activeClients) {
+    const summary = [];
+    for (const network of networks) {
+      const id = String(network._id);
+      const enabled = network.enabled !== false;
+      const clients = enabled ? vpnClientsOf(network, activeClients) : [];
+      await publisher.publish(gladys.externalId(`vpn:${id}:state`), enabled ? 1 : 0);
+      await publisher.publish(gladys.externalId(`vpn:${id}:clients`), clients.length);
+      const now = new Map(clients.map((client) => [vpnClientKey(client), client]));
+      const before = vpnClients.get(id);
+      if (before) {
+        const device = gladys.externalIds('vpn', id).device;
+        const data = (client) => ({
+          vpn_device: device,
+          vpn: String(network.name || 'WireGuard'),
+          client: vpnClientName(client),
+        });
+        for (const [key, client] of now) {
+          if (!before.has(key)) {
+            logger.debug(`VPN client connected: ${vpnClientName(client)}`);
+            await fire(TRIGGERS.VPN_CONNECTED, data(client));
+          }
+        }
+        for (const [key, client] of before) {
+          if (!now.has(key)) {
+            logger.debug(`VPN client disconnected: ${vpnClientName(client)}`);
+            await fire(TRIGGERS.VPN_DISCONNECTED, data(client));
+          }
+        }
+      }
+      vpnClients.set(id, now);
+      summary.push([id, enabled, [...now.keys()].sort()]);
+    }
+    const signature = JSON.stringify(summary);
+    if (signature !== vpnSignature) {
+      vpnSignature = signature;
+      onVpnChanged();
+    }
+  }
+
+  async function fire(key, data) {
+    try {
+      await gladys.publishSceneEvent(key, data);
+    } catch (err) {
+      logger.debug(`Scene event ${key} refused: ${err.message}`);
     }
   }
 

@@ -16,6 +16,7 @@ export const DEFAULT_CONFIG = {
   only_active_clients: true,
   client_connection_type: 'all', // 'all', 'wifi_only', 'wired_only'
   allowed_ssids: '',
+  allow_vpn_control: false,
   GLADYS_PREFER_LOCAL: true,
 };
 
@@ -50,6 +51,7 @@ export function normalizeConfig(raw = {}) {
       ? raw.client_connection_type
       : DEFAULT_CONFIG.client_connection_type,
     allowed_ssids: parsedSsids,
+    allow_vpn_control: raw.allow_vpn_control === true || raw.allow_vpn_control === 'true',
     GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
   };
 }
