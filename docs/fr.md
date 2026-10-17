@@ -8,6 +8,7 @@ Cette intégration permet de connecter votre console **Ubiquiti UniFi OS** (UCG 
 - **Contrôle d'accès Internet** : Bouton interrupteur pour bloquer ou autoriser l'accès web de n'importe quel appareil connecté.
 - **Contrôle des ports PoE** : Allumer ou éteindre l'alimentation PoE d'un port de switch (pratique pour redémarrer une caméra IP ou un point d'accès).
 - **Wi-Fi Invités & SSID** : Interrupteurs pour activer ou désactiver facilement des réseaux Wi-Fi (ex: Wi-Fi Invités).
+- **Serveur VPN WireGuard** : l'état du serveur WireGuard de la passerelle (UCG, UDM…), le nombre de clients VPN connectés, et des déclencheurs de scène « Client VPN connecté » / « Client VPN déconnecté » (présence à distance). Le couper depuis Gladys reste désactivé tant que vous ne cochez pas **Autoriser la commande du serveur VPN** dans la configuration ; après l'avoir coché, mettez l'appareil à jour depuis l'onglet Découverte pour que son interrupteur devienne commandable.
 - **Supervision WAN & Santé** : Remontée des débits montant et descendant (Mbps) et de l'état de votre Gateway.
 
 ---
@@ -44,7 +45,7 @@ L'intégration prend en charge 2 modes au choix :
 
 ## Widgets du tableau de bord
 
-Depuis Gladys 5.1, l'intégration propose trois widgets dans l'éditeur de tableau de bord. Ils lisent le dernier relevé de l'intégration (toutes les 30 secondes) et n'interrogent jamais la console en plus. Aucun widget n'affiche d'adresse MAC ni d'adresse IP (les fragments d'adresse qu'un client sans nom reçoit dans son nom Gladys sont retirés) : un tableau de bord peut être public.
+Depuis Gladys 5.1, l'intégration propose quatre widgets dans l'éditeur de tableau de bord. Ils lisent le dernier relevé de l'intégration (toutes les 30 secondes) et n'interrogent jamais la console en plus. Aucun widget n'affiche d'adresse MAC ni d'adresse IP (les fragments d'adresse qu'un client sans nom reçoit dans son nom Gladys sont retirés) : un tableau de bord peut être public.
 
 - **Réseau** : le réseau en un coup d'œil. Deux tuiles « Descendant » et « Montant » et un graphique suivent les fonctionnalités de débit WAN de la passerelle, en direct ; les tuiles « Clients » (clients actifs) et « Équipements » (équipements UniFi en ligne / total) viennent du dernier relevé ; la liste d'état donne l'état d'Internet (sous-système WAN de la console), les clients Wi-Fi, filaires et invités, et les équipements hors ligne.
   - Réglages : **Passerelle** (la passerelle ajoutée à Gladys ; vide = la première passerelle connue) et **Période du graphique** (dernière heure, dernier jour, dernière semaine).
@@ -55,6 +56,14 @@ Depuis Gladys 5.1, l'intégration propose trois widgets dans l'éditeur de table
 - **Wi-Fi** : un réseau Wi-Fi (SSID) : son état, ses clients connectés, s'il s'agit d'un réseau invités, sa bande et sa sécurité quand la console les donne, et deux boutons **Activer** / **Désactiver**. Le cas d'usage : le Wi-Fi invités, qu'on ouvre le temps d'une visite depuis une tablette murale.
   - Réglage : **Réseau Wi-Fi** (le SSID ajouté à Gladys ; vide = le premier SSID connu).
   - Limites : les boutons passent par la fonctionnalité « État Wi-Fi » du SSID, qui doit donc être **ajouté à Gladys** depuis la Découverte. Le nombre de clients compte les clients Wi-Fi dont le SSID est celui-ci au dernier relevé.
+
+- **VPN WireGuard** : le serveur WireGuard de la passerelle : son état, le nombre de clients connectés, et une ligne par client (son nom et les données échangées, ↓ reçu · ↑ envoyé, quand la console les donne). Les boutons **Activer** / **Désactiver** n'apparaissent que si **Autoriser la commande du serveur VPN** est coché dans la configuration (un accès à distance coupé par erreur se rétablit mal).
+  - Réglage : **Serveur VPN** (le serveur ajouté à Gladys ; vide = le premier connu).
+  - Limites : un client VPN est reconnu à son adresse dans le sous-réseau du VPN, dans la liste des clients de la console (comme dans la page Appareils clients). Développé sans passerelle WireGuard sous la main : vos retours sont les bienvenus.
+
+## Déclencheurs de scène
+
+- **Client VPN connecté** / **Client VPN déconnecté** : un client rejoint ou quitte le serveur WireGuard de la passerelle (vu au relevé suivant, toutes les 30 secondes ; rien au démarrage de l'intégration). Filtre : un serveur VPN, ou n'importe lequel. Variables : nom du client, nom du serveur VPN.
 
 ## Dépannage
 

@@ -258,6 +258,27 @@ export class UniFiClient {
   }
 
   /**
+   * Fetch the network configurations (LANs, VPN servers...): the WireGuard
+   * server of the gateway is one (`purpose: remote-user-vpn`).
+   */
+  async getNetworks() {
+    const res = await this.request('GET', '/api/s/{site}/rest/networkconf');
+    return res?.data || [];
+  }
+
+  /**
+   * Enable/Disable a network (the WireGuard server). Only `enabled` is sent,
+   * as for the WLANs: sending the whole object back could write a masked
+   * private key over the real one and break every peer. A console that
+   * refuses the partial update answers an error, nothing changes.
+   */
+  async setNetworkEnabled(network, enabled) {
+    return await this.request('PUT', `/api/s/{site}/rest/networkconf/${network._id}`, {
+      enabled: Boolean(enabled),
+    });
+  }
+
+  /**
    * Set PoE mode on a switch port (e.g. 'auto', 'off', 'passthrough').
    */
   async setPortPoeMode(deviceId, portOverrides) {

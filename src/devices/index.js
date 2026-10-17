@@ -7,12 +7,15 @@ import { gatewayBlueprint } from './gateway.js';
 import { clientBlueprint } from './clientPresence.js';
 import { hasPoePorts, legacyPoeSwitchBlueprint } from './poePort.js';
 import { wifiNetworkBlueprint } from './wifiNetwork.js';
+import { vpnServerBlueprint } from './vpnServer.js';
+import { isWireGuardServer } from '../vpn.js';
 import { MESSAGES } from '../messages.js';
 
 export const DEVICE_BLUEPRINTS = [
   gatewayBlueprint,
   clientBlueprint,
   wifiNetworkBlueprint,
+  vpnServerBlueprint,
   legacyPoeSwitchBlueprint,
 ];
 
@@ -143,6 +146,20 @@ export async function buildDiscoveredDevices(gladys, config, unifiClient) {
       logger.debug(`UniFi getWlans returned ${wlans.length} wlan(s).`);
       for (const wlan of wlans) {
         discovered.push(wifiNetworkBlueprint.buildDevice(gladys, wlan));
+      }
+      // The WireGuard server of the gateway (a key without the right to read
+      // the networks only loses this device).
+      try {
+        const networks = await unifiClient.getNetworks();
+        for (const network of networks.filter(isWireGuardServer)) {
+          discovered.push(
+            vpnServerBlueprint.buildDevice(gladys, network, {
+              allowControl: config?.allow_vpn_control === true,
+            }),
+          );
+        }
+      } catch (err) {
+        logger.debug('UniFi getNetworks failed, no VPN device:', err.message);
       }
     }
 

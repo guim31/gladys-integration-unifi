@@ -201,6 +201,24 @@
       "default": true
     },
     {
+      "key": "allow_vpn_control",
+      "type": "boolean",
+      "label": {
+        "en": "Allow the VPN server control",
+        "fr": "Autoriser la commande du serveur VPN",
+        "de": "Steuerung des VPN-Servers erlauben",
+        "es": "Permitir el control del servidor VPN"
+      },
+      "description": {
+        "en": "Off: the WireGuard server is shown only, it cannot be turned off from Gladys (a remote access cut by mistake is hard to restore).",
+        "fr": "Désactivé : le serveur WireGuard est seulement affiché, il ne peut pas être coupé depuis Gladys (un accès à distance coupé par erreur se rétablit mal).",
+        "de": "Aus: Der WireGuard-Server wird nur angezeigt und kann in Gladys nicht abgeschaltet werden (ein versehentlich getrennter Fernzugang ist schwer wiederherzustellen).",
+        "es": "Desactivado: el servidor WireGuard solo se muestra y no puede apagarse desde Gladys (un acceso remoto cortado por error es difícil de restablecer)."
+      },
+      "required": false,
+      "default": false
+    },
+    {
       "key": "discover_clients",
       "type": "boolean",
       "label": {
@@ -463,6 +481,144 @@
             "es": "La red Wi-Fi (SSID) añadida a Gladys. Déjelo vacío para usar el primer SSID conocido."
           },
           "required": false
+        }
+      ]
+    },
+    {
+      "key": "vpn",
+      "label": {
+        "en": "WireGuard VPN",
+        "fr": "VPN WireGuard",
+        "de": "WireGuard-VPN",
+        "es": "VPN WireGuard"
+      },
+      "description": {
+        "en": "The WireGuard server of the gateway: its state and its connected clients.",
+        "fr": "Le serveur WireGuard de la passerelle : son état et ses clients connectés.",
+        "de": "Der WireGuard-Server des Gateways: sein Status und seine verbundenen Clients.",
+        "es": "El servidor WireGuard de la puerta de enlace: su estado y sus clientes conectados."
+      },
+      "icon": "shield",
+      "settings": [
+        {
+          "key": "network",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VPN server",
+            "fr": "Serveur VPN",
+            "de": "VPN-Server",
+            "es": "Servidor VPN"
+          },
+          "description": {
+            "en": "The WireGuard server added to Gladys. Leave empty for the first one.",
+            "fr": "Le serveur WireGuard ajouté à Gladys. Laissez vide pour le premier.",
+            "de": "Der zu Gladys hinzugefügte WireGuard-Server. Leer lassen für den ersten.",
+            "es": "El servidor WireGuard añadido a Gladys. Déjelo vacío para el primero."
+          },
+          "required": false
+        }
+      ]
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "vpn_client_connected",
+      "label": {
+        "en": "VPN client connected",
+        "fr": "Client VPN connecté",
+        "de": "VPN-Client verbunden",
+        "es": "Cliente VPN conectado"
+      },
+      "description": {
+        "en": "A client connected to the WireGuard server of the gateway (seen at the next reading, every 30 s).",
+        "fr": "Un client s'est connecté au serveur WireGuard de la passerelle (vu à la lecture suivante, toutes les 30 s).",
+        "de": "Ein Client hat sich mit dem WireGuard-Server des Gateways verbunden (bei der nächsten Abfrage gesehen, alle 30 s).",
+        "es": "Un cliente se ha conectado al servidor WireGuard de la puerta de enlace (visto en la lectura siguiente, cada 30 s)."
+      },
+      "fields": [
+        {
+          "key": "vpn_device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VPN server (empty: any)",
+            "fr": "Serveur VPN (vide : n'importe lequel)",
+            "de": "VPN-Server (leer: beliebig)",
+            "es": "Servidor VPN (vacío: cualquiera)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "client",
+          "type": "string",
+          "label": {
+            "en": "Client",
+            "fr": "Client",
+            "de": "Client",
+            "es": "Cliente"
+          }
+        },
+        {
+          "key": "vpn",
+          "type": "string",
+          "label": {
+            "en": "VPN server",
+            "fr": "Serveur VPN",
+            "de": "VPN-Server",
+            "es": "Servidor VPN"
+          }
+        }
+      ]
+    },
+    {
+      "key": "vpn_client_disconnected",
+      "label": {
+        "en": "VPN client disconnected",
+        "fr": "Client VPN déconnecté",
+        "de": "VPN-Client getrennt",
+        "es": "Cliente VPN desconectado"
+      },
+      "description": {
+        "en": "A client left the WireGuard server of the gateway.",
+        "fr": "Un client a quitté le serveur WireGuard de la passerelle.",
+        "de": "Ein Client hat den WireGuard-Server des Gateways verlassen.",
+        "es": "Un cliente ha dejado el servidor WireGuard de la puerta de enlace."
+      },
+      "fields": [
+        {
+          "key": "vpn_device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VPN server (empty: any)",
+            "fr": "Serveur VPN (vide : n'importe lequel)",
+            "de": "VPN-Server (leer: beliebig)",
+            "es": "Servidor VPN (vacío: cualquiera)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "client",
+          "type": "string",
+          "label": {
+            "en": "Client",
+            "fr": "Client",
+            "de": "Client",
+            "es": "Cliente"
+          }
+        },
+        {
+          "key": "vpn",
+          "type": "string",
+          "label": {
+            "en": "VPN server",
+            "fr": "Serveur VPN",
+            "de": "VPN-Server",
+            "es": "Servidor VPN"
+          }
         }
       ]
     }

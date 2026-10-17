@@ -8,7 +8,10 @@
 //   - presence : who is home, from the client devices ADDED to Gladys (their
 //                Gladys names), present first;
 //   - wifi     : one SSID: its state, its clients, and two buttons bound to
-//                its `state` feature (Enable / Disable) — the guest Wi-Fi case.
+//                its `state` feature (Enable / Disable) — the guest Wi-Fi case;
+//   - vpn      : the WireGuard server of the gateway: its state, its
+//                connected clients (name, traffic), and Enable / Disable
+//                when the configuration allows it (forum t/10426/57).
 //
 // Every builder reads a SNAPSHOT: the last poll kept in memory by index.js
 // (active clients, UniFi hardware, WLANs, subsystem health). Rendering a
@@ -22,12 +25,14 @@
 
 import { WIDGET_CHART_INTERVALS, WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { isGatewayDevice } from './devices/gateway.js';
+import { vpnClientsOf, vpnClientName } from './vpn.js';
 
 /** Widget keys, declared in the manifest `widgets` (forever: never rename). */
 export const WIDGET = {
   NETWORK: 'network',
   PRESENCE: 'presence',
   WIFI: 'wifi',
+  VPN: 'vpn',
 };
 
 /** The `interval` setting of the network widget (chart history window). */
@@ -132,11 +137,29 @@ export const WIDGET_TEXTS = {
     es: 'Todavía no se conoce ninguna red Wi-Fi. En cuanto responda el controlador, añada el SSID desde la pestaña «Descubrir» para que los botones puedan conmutarla.',
   },
 };
+Object.assign(WIDGET_TEXTS, {
+  vpnServer: { en: 'VPN server', fr: 'Serveur VPN', de: 'VPN-Server', es: 'Servidor VPN' },
+  vpnClients: {
+    en: 'Connected clients',
+    fr: 'Clients connectés',
+    de: 'Verbundene Clients',
+    es: 'Clientes conectados',
+  },
+  vpnClient: { en: 'VPN client', fr: 'Client VPN', de: 'VPN-Client', es: 'Cliente VPN' },
+  vpnOnline: { en: 'Connected', fr: 'Connecté', de: 'Verbunden', es: 'Conectado' },
+  noVpn: {
+    en: 'No WireGuard server on the gateway yet. Create one in UniFi Network (Settings → VPN → VPN Server), then add it from the Discover tab.',
+    fr: "Aucun serveur WireGuard sur la passerelle pour l'instant. Créez-le dans UniFi Network (Paramètres → VPN → Serveur VPN), puis ajoutez-le depuis l'onglet Découverte.",
+    de: 'Noch kein WireGuard-Server auf dem Gateway. Lege ihn in UniFi Network an (Einstellungen → VPN → VPN-Server) und füge ihn dann im Tab „Entdecken“ hinzu.',
+    es: 'Todavía no hay ningún servidor WireGuard en la puerta de enlace. Créelo en UniFi Network (Ajustes → VPN → Servidor VPN) y añádalo desde la pestaña «Descubrir».',
+  },
+  megabytes: { en: 'MB', fr: 'Mo', de: 'MB', es: 'MB' },
+});
 const T = WIDGET_TEXTS;
 
 /** An empty snapshot: nothing polled yet. */
 export function emptySnapshot() {
-  return { polled: false, clients: [], devices: [], wlans: [], health: [] };
+  return { polled: false, clients: [], devices: [], wlans: [], health: [], vpns: [] };
 }
 
 /**
@@ -514,4 +537,99 @@ export function buildWifiContent({ snapshot, settings = {}, externalIds }) {
       },
     ],
   };
+}
+
+/**
+ * Pick the WireGuard server a vpn widget shows: the one chosen in the
+ * settings (a device external_id) when known, else the first one.
+ */
+export function pickVpn(snapshot, chosen, externalIds) {
+  const vpns = snapshot.vpns ?? [];
+  if (chosen) {
+    const match = vpns.find((vpn) => externalIds('vpn', String(vpn._id)).device === chosen);
+    if (match) {
+      return match;
+    }
+  }
+  return vpns[0] ?? null;
+}
+
+/** "↓ 12 MB · ↑ 3 MB" of a client (bytes the client received / sent), null without counters. */
+function trafficOf(client) {
+  const toMb = (bytes) => Math.round(Number(bytes) / 1e6);
+  // On the console's side: tx = sent to the client, rx = received from it.
+  if (!Number.isFinite(Number(client.tx_bytes)) || !Number.isFinite(Number(client.rx_bytes))) {
+    return null;
+  }
+  return Object.fromEntries(
+    Object.entries(T.megabytes).map(([language, unit]) => [
+      language,
+      `↓ ${toMb(client.tx_bytes)} ${unit} · ↑ ${toMb(client.rx_bytes)} ${unit}`,
+    ]),
+  );
+}
+
+/**
+ * The vpn widget: the WireGuard server's state and connected clients; the
+ * Enable / Disable buttons only when the configuration allows the control.
+ */
+export function buildVpnContent({ snapshot, settings = {}, externalIds, allowControl = false }) {
+  const vpn = pickVpn(snapshot, settings.network, externalIds);
+  if (!vpn) {
+    return {
+      ttl_seconds: 30,
+      components: [
+        { type: 'text', variant: 'body', text: snapshot.polled ? T.noVpn : T.noPollYet },
+      ],
+    };
+  }
+  const ids = externalIds('vpn', String(vpn._id));
+  const enabled = vpn.enabled !== false;
+  const clients = enabled ? vpnClientsOf(vpn, snapshot.clients) : [];
+  const rows = [
+    {
+      label: T.vpnServer,
+      value: enabled ? T.enabled : T.disabled,
+      icon: enabled ? 'shield' : 'shield-off',
+      color: enabled ? WIDGET_COLORS.SUCCESS : WIDGET_COLORS.NEUTRAL,
+    },
+    {
+      label: T.vpnClients,
+      value: clients.length,
+      icon: 'users',
+      color: clients.length > 0 ? WIDGET_COLORS.INFO : WIDGET_COLORS.NEUTRAL,
+    },
+  ];
+  for (const client of clients.slice(0, MAX_STATUS_ROWS - rows.length)) {
+    const name = publicName(vpnClientName(client));
+    rows.push({
+      label: name ? truncate(name, MAX_STATUS_LABEL) : T.vpnClient,
+      value: trafficOf(client) ?? T.vpnOnline,
+      icon: 'smartphone',
+      color: WIDGET_COLORS.SUCCESS,
+    });
+  }
+  const components = [
+    { type: 'text', variant: 'heading', text: truncate(vpn.name || 'WireGuard', MAX_HEADING) },
+    { type: 'status', items: rows },
+  ];
+  if (allowControl) {
+    components.push(
+      {
+        type: 'button',
+        label: T.enable,
+        icon: 'shield',
+        device_feature: ids.feature('state'),
+        value: 1,
+      },
+      {
+        type: 'button',
+        label: T.disable,
+        icon: 'shield-off',
+        device_feature: ids.feature('state'),
+        value: 0,
+      },
+    );
+  }
+  return { ttl_seconds: 30, components };
 }

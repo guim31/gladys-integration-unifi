@@ -14,12 +14,13 @@ import {
 import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
 import { createStatePublisher } from './src/statePublisher.js';
 import { createPoller, POLL_INTERVAL_MS } from './src/poller.js';
-import { MESSAGES } from './src/messages.js';
+import { MESSAGES, VPN_READ_ONLY } from './src/messages.js';
 import {
   WIDGET,
   buildNetworkContent,
   buildPresenceContent,
   buildWifiContent,
+  buildVpnContent,
   emptySnapshot,
 } from './src/widgets.js';
 
@@ -76,6 +77,7 @@ const poller = createPoller({
   getConfig: () => config,
   getSnapshot: () => snapshot,
   onPresenceChanged: () => nudgeWidget(WIDGET.PRESENCE),
+  onVpnChanged: () => nudgeWidget(WIDGET.VPN),
 });
 const { pollAllStates } = poller;
 
@@ -222,7 +224,37 @@ gladys.onSetValue(async (device, feature, value) => {
     return;
   }
 
-  // 3. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
+  // 3. WireGuard server (unifi:vpn:<network _id>:state), only when allowed
+  if (extId.includes(':vpn:') && extId.endsWith(':state')) {
+    if (!config.allow_vpn_control) {
+      throw new Error(VPN_READ_ONLY);
+    }
+    const tag = ':vpn:';
+    const networkId = extId.slice(extId.indexOf(tag) + tag.length, extId.lastIndexOf(':state'));
+    const network = (await unifiClient.getNetworks()).find((n) => String(n._id) === networkId);
+    if (!network) {
+      throw new Error(`Unknown VPN network ${networkId}`);
+    }
+    await publisher.publish(feature.external_id, value, { force: true });
+    try {
+      logger.info(
+        `[UniFi Action] Setting VPN ${network.name || networkId} = ${value === 1 ? 'enabled' : 'disabled'}`,
+      );
+      // The answer may echo the network (its private key): never logged.
+      await unifiClient.setNetworkEnabled(network, value === 1);
+    } catch (err) {
+      logger.error(
+        `[UniFi Action Error] Failed to set VPN ${networkId} state:`,
+        err?.response?.status ?? err.message,
+      );
+      await publisher.publish(feature.external_id, value === 1 ? 0 : 1, { force: true });
+      throw err;
+    }
+    nudgeWidget(WIDGET.VPN);
+    return;
+  }
+
+  // 4. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
   if (extId.includes(':poe:') && extId.endsWith(':power')) {
     const tag = ':poe:';
     const suffix = ':power';
@@ -296,6 +328,15 @@ gladys.onWidgetGet(WIDGET.PRESENCE, async ({ settings }) => {
 
 gladys.onWidgetGet(WIDGET.WIFI, async ({ settings }) => {
   return buildWifiContent({ snapshot, settings, externalIds });
+});
+
+gladys.onWidgetGet(WIDGET.VPN, async ({ settings }) => {
+  return buildVpnContent({
+    snapshot,
+    settings,
+    externalIds,
+    allowControl: config.allow_vpn_control,
+  });
 });
 
 // --- Manifest Action (Test Connection) ---------------------------------------
