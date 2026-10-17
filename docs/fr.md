@@ -8,7 +8,7 @@ Cette intégration permet de connecter votre console **Ubiquiti UniFi OS** (UCG 
 - **Contrôle d'accès Internet** : Bouton interrupteur pour bloquer ou autoriser l'accès web de n'importe quel appareil connecté.
 - **Contrôle des ports PoE** : Allumer ou éteindre l'alimentation PoE d'un port de switch (pratique pour redémarrer une caméra IP ou un point d'accès).
 - **Wi-Fi Invités & SSID** : Interrupteurs pour activer ou désactiver facilement des réseaux Wi-Fi (ex: Wi-Fi Invités).
-- **Serveur VPN WireGuard** : l'état du serveur WireGuard de la passerelle (UCG, UDM…), le nombre de clients VPN connectés, et des déclencheurs de scène « Client VPN connecté » / « Client VPN déconnecté » (présence à distance). Le couper depuis Gladys reste désactivé tant que vous ne cochez pas **Autoriser la commande du serveur VPN** dans la configuration.
+- **Serveur VPN WireGuard** : l'état du serveur WireGuard de la passerelle (UCG, UDM…), le nombre de clients VPN connectés, et des déclencheurs de scène « Client VPN connecté » / « Client VPN déconnecté » (présence à distance). Le couper depuis Gladys reste désactivé tant que vous ne cochez pas **Autoriser la commande du serveur VPN** dans la configuration ; après l'avoir coché, mettez l'appareil à jour depuis l'onglet Découverte pour que son interrupteur devienne commandable.
 - **Supervision WAN & Santé** : Remontée des débits montant et descendant (Mbps) et de l'état de votre Gateway.
 
 ---

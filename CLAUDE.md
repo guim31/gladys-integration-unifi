@@ -90,8 +90,9 @@ des boutons du widget Wi-Fi, sous-système `wan` de `getHealth()` (sinon « Inte
 
 - Le serveur est un réseau de `rest/networkconf` : `purpose: remote-user-vpn`, `vpn_type: wireguard-server`,
   `enabled`, `ip_subnet`. Champs relevés dans un message de la communauté UI, **pas sur une vraie passerelle** :
-  à vérifier au premier retour. Le `PUT rest/networkconf/<_id>` renvoie l'objet entier (clé privée WireGuard
-  comprise) : jamais journalisé.
+  à vérifier au premier retour. Commande : `PUT rest/networkconf/<_id>` **partiel** (`{ enabled }`), comme pour les
+  WLAN : renvoyer l'objet entier risquerait d'écrire une clé privée masquée par l'API par-dessus la vraie (tous les
+  pairs cassés). Si la console refuse le partiel, l'erreur remonte, rien ne change. Réponse jamais journalisée.
 - Les clients VPN connectés ne sont pas dans l'API officielle `/clients` (signalé sur community.ui.com) ; la console
   les montre dans « Appareils clients », donc dans `stat/sta` : reconnus par leur IP dans `ip_subnet` (ou
   `network_id` = `_id` du réseau). Événements `vpn_client_connected/disconnected` sur les différences entre deux

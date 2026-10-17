@@ -118,7 +118,10 @@ export function createPoller({
       // The widgets have something to show from here on, whatever the later
       // steps do (a restricted API key may fail stat/device every time).
       snapshot.polled = true;
-      const activeMacs = new Set(activeClients.map((c) => c.mac.toLowerCase()));
+      // A WireGuard peer may come without a MAC: it must not stop the poll.
+      const activeMacs = new Set(
+        activeClients.filter((c) => c.mac).map((c) => c.mac.toLowerCase()),
+      );
 
       for (const client of activeClients) {
         if (!client.mac) continue;

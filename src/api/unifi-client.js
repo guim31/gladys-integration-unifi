@@ -267,13 +267,13 @@ export class UniFiClient {
   }
 
   /**
-   * Enable/Disable a network (the WireGuard server). The whole object is sent
-   * back with `enabled` changed: the console checks a VPN network as a whole.
-   * It carries the server's private key: never logged.
+   * Enable/Disable a network (the WireGuard server). Only `enabled` is sent,
+   * as for the WLANs: sending the whole object back could write a masked
+   * private key over the real one and break every peer. A console that
+   * refuses the partial update answers an error, nothing changes.
    */
   async setNetworkEnabled(network, enabled) {
     return await this.request('PUT', `/api/s/{site}/rest/networkconf/${network._id}`, {
-      ...network,
       enabled: Boolean(enabled),
     });
   }

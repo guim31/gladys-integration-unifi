@@ -140,3 +140,10 @@ test('widget: state, clients with their traffic, buttons only when allowed', () 
   const none = buildVpnContent({ snapshot: { ...snapshot, vpns: [] }, externalIds });
   assert.match(none.components[0].text.fr, /Aucun serveur WireGuard/);
 });
+
+test('a VPN peer without MAC does not stop the poll, and still counts', async () => {
+  const w = setup();
+  w.unifi.active = [PHONE, { name: 'Tablet', ip: '192.168.3.7' }];
+  await w.poller.pollAllStates();
+  assert.equal(last(w.gladys, ids(w.gladys).feature('clients')), 1);
+});

@@ -224,7 +224,6 @@ gladys.onSetValue(async (device, feature, value) => {
     return;
   }
 
-  // 3. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
   // 3. WireGuard server (unifi:vpn:<network _id>:state), only when allowed
   if (extId.includes(':vpn:') && extId.endsWith(':state')) {
     if (!config.allow_vpn_control) {
@@ -241,7 +240,7 @@ gladys.onSetValue(async (device, feature, value) => {
       logger.info(
         `[UniFi Action] Setting VPN ${network.name || networkId} = ${value === 1 ? 'enabled' : 'disabled'}`,
       );
-      // The answer echoes the network, private key included: never logged.
+      // The answer may echo the network (its private key): never logged.
       await unifiClient.setNetworkEnabled(network, value === 1);
     } catch (err) {
       logger.error(
@@ -255,6 +254,7 @@ gladys.onSetValue(async (device, feature, value) => {
     return;
   }
 
+  // 4. PoE Port Switch (unifi:poe:<deviceMac>:<portIdx>:power)
   if (extId.includes(':poe:') && extId.endsWith(':power')) {
     const tag = ':poe:';
     const suffix = ':power';

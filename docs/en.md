@@ -8,7 +8,7 @@ Connect your **Ubiquiti UniFi OS** console (UCG Fiber, Dream Machine UDM/UDM-SE,
 - **Internet Access Control**: Switch button to block or unblock internet access for any connected client device.
 - **Switch PoE Port Control**: Turn PoE power ON/OFF on switch ports (useful for power cycling IP cameras or Access Points).
 - **Wi-Fi SSID Control**: Enable or disable Wi-Fi networks (e.g., Guest Wi-Fi) from Gladys dashboards or scenes.
-- **WireGuard VPN server**: the state of the gateway's WireGuard server (UCG, UDM…), the number of connected VPN clients, and the "VPN client connected" / "VPN client disconnected" scene triggers (remote presence). Turning it off from Gladys stays disabled until you tick **Allow the VPN server control** in the configuration.
+- **WireGuard VPN server**: the state of the gateway's WireGuard server (UCG, UDM…), the number of connected VPN clients, and the "VPN client connected" / "VPN client disconnected" scene triggers (remote presence). Turning it off from Gladys stays disabled until you tick **Allow the VPN server control** in the configuration; then update the device from the Discovery tab so its switch becomes controllable.
 - **WAN & Gateway Health Metrics**: Real-time Upload/Download throughput (Mbps) and Gateway online status.
 
 ---
