@@ -93,10 +93,12 @@ des boutons du widget Wi-Fi, sous-système `wan` de `getHealth()` (sinon « Inte
   à vérifier au premier retour. Commande : `PUT rest/networkconf/<_id>` **partiel** (`{ enabled }`), comme pour les
   WLAN : renvoyer l'objet entier risquerait d'écrire une clé privée masquée par l'API par-dessus la vraie (tous les
   pairs cassés). Si la console refuse le partiel, l'erreur remonte, rien ne change. Réponse jamais journalisée.
-- Les clients VPN connectés ne sont pas dans l'API officielle `/clients` (signalé sur community.ui.com) ; la console
-  les montre dans « Appareils clients », donc dans `stat/sta` : reconnus par leur IP dans `ip_subnet` (ou
-  `network_id` = `_id` du réseau). Événements `vpn_client_connected/disconnected` sur les différences entre deux
-  relevés (aucun au premier).
+- **Clients VPN connectés (vérifié le 18/10/2026 sur l'UDR7 de mutmut, t/10426/62, action « Diagnostic VPN »)** :
+  `GET /api/s/<site>/stat/remoteuservpn` liste les connexions actives de tous les serveurs (`network_id`, `user`,
+  `peer_id`, `tunnel_ip`, `rx_bytes`, `tx_bytes`, `uptime`, `up`, `vpn_type`…), et
+  `GET /v2/api/site/<site>/wireguard/<_id du réseau>/users` les pairs déclarés (`_id`, `name`, `network_id`,
+  `public_key`, `allowed_ips`). Des passerelles UniFi distantes clientes WireGuard ne sont **pas** dans `stat/sta`
+  (0 dans le sous-réseau, 0 par `network_id`) : `stat/sta` ne reste qu'en repli.
 - Couper le serveur depuis Gladys : `allow_vpn_control` (faux par défaut) ; sans lui, l'interrupteur est
   `read_only` et `onSetValue` refuse.
 

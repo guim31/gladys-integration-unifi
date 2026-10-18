@@ -5,6 +5,12 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- WireGuard VPN: the connected clients are now read from the active VPN
+  connections of the console and named after the server's peers. A UDR7
+  whose clients are two remote UniFi gateways showed 0 connected client.
+
 ### Added
 
 - "VPN diagnostic" action: where the console lists the clients of its

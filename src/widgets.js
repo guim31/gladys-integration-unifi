@@ -165,7 +165,15 @@ const T = WIDGET_TEXTS;
 
 /** An empty snapshot: nothing polled yet. */
 export function emptySnapshot() {
-  return { polled: false, clients: [], devices: [], wlans: [], health: [], vpns: [] };
+  return {
+    polled: false,
+    clients: [],
+    devices: [],
+    wlans: [],
+    health: [],
+    vpns: [],
+    vpnClients: {},
+  };
 }
 
 /**
@@ -593,7 +601,10 @@ export function buildVpnContent({ snapshot, settings = {}, externalIds, allowCon
   }
   const ids = externalIds('vpn', String(vpn._id));
   const enabled = vpn.enabled !== false;
-  const clients = enabled ? vpnClientsOf(vpn, snapshot.clients) : [];
+  // As the last poll found them (connections and peers), else from stat/sta.
+  const clients = enabled
+    ? (snapshot.vpnClients?.[String(vpn._id)] ?? vpnClientsOf(vpn, snapshot.clients))
+    : [];
   const rows = [
     {
       label: T.vpnServer,
