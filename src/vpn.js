@@ -3,10 +3,12 @@
 //
 // The server is a network of `rest/networkconf`: `purpose: remote-user-vpn`,
 // `vpn_type: wireguard-server`, `enabled`, `ip_subnet` (e.g. 192.168.3.1/24).
-// Its connected clients show among the clients of the console (`stat/sta`,
-// as in the Client Devices page): they are recognized by their IP inside the
-// VPN subnet, or by the `network_id` of the server. Not tested on a real
-// gateway with a WireGuard server yet: feedback welcome.
+// Its connected clients are the active remote-user VPN connections
+// (`stat/remoteuservpn`) whose `network_id` is the server, named after the
+// peers of the server (`v2 …/wireguard/<id>/users`): seen on a UDR7 whose
+// clients are two remote UniFi gateways (forum t/10426/62). An active
+// client of `stat/sta` inside the VPN subnet counts too (a console that
+// lists them there).
 // -----------------------------------------------------------------------------
 
 /** A WireGuard server of the gateway. */
@@ -50,19 +52,42 @@ export function inSubnet(ip, cidr) {
   return subnet !== null && address !== null && (address & subnet[1]) >>> 0 === subnet[0];
 }
 
-/** The connected clients of a WireGuard server, among the active clients. */
-export function vpnClientsOf(network, clients) {
-  return (clients ?? []).filter(
+/**
+ * The connected clients of a WireGuard server: its active connections, then
+ * the active clients inside its subnet not already counted.
+ * @param {object} network a WireGuard server of `rest/networkconf`
+ * @param {Array<object>} clients the active clients (`stat/sta`)
+ * @param {Array<object>} [connections] `stat/remoteuservpn`
+ * @param {Array<object>} [users] the peers of this server
+ */
+export function vpnClientsOf(network, clients, connections = [], users = []) {
+  const peers = new Map((users ?? []).map((user) => [String(user._id), user]));
+  const connected = (connections ?? [])
+    .filter((c) => c && c.network_id === network._id && c.up !== false)
+    .map((c) => {
+      const peer = peers.get(String(c.user ?? '')) ?? peers.get(String(c.peer_id ?? ''));
+      return {
+        key: String(c.peer_id ?? c.user ?? c.id ?? c.tunnel_ip ?? ''),
+        name: peer?.name || c.name || c.tunnel_ip || 'VPN',
+        ip: c.tunnel_ip,
+        rx_bytes: c.rx_bytes,
+        tx_bytes: c.tx_bytes,
+      };
+    });
+  const seen = new Set(connected.map((c) => c.ip).filter(Boolean));
+  const listed = (clients ?? []).filter(
     (client) =>
       client &&
+      !seen.has(client.ip) &&
       ((network.ip_subnet && inSubnet(client.ip, network.ip_subnet)) ||
         (client.network_id && client.network_id === network._id)),
   );
+  return [...connected, ...listed];
 }
 
 /** The key of a VPN client between two polls: its MAC, else its IP. */
 export const vpnClientKey = (client) =>
-  String(client.mac || client.ip || client.name || '').toLowerCase();
+  String(client.key || client.mac || client.ip || client.name || '').toLowerCase();
 
 /** The name of a VPN client as the console shows it. */
 export const vpnClientName = (client) =>

@@ -219,7 +219,25 @@ export function createPoller({
       try {
         const networks = (await unifiClient.getNetworks()).filter(isWireGuardServer);
         snapshot.vpns = networks;
-        await pollVpn(networks, activeClients);
+        // The connections and the peers' names: a console without them
+        // (older firmware, restricted key) falls back to stat/sta.
+        const optional = async (read) => {
+          try {
+            return await read();
+          } catch {
+            return [];
+          }
+        };
+        const connections =
+          networks.length > 0 ? await optional(() => unifiClient.getVpnConnections()) : [];
+        const users = new Map();
+        for (const network of networks) {
+          users.set(
+            String(network._id),
+            await optional(() => unifiClient.getWireguardUsers(network._id)),
+          );
+        }
+        await pollVpn(networks, activeClients, connections, users);
       } catch (err) {
         logger.debug('UniFi getNetworks failed:', err.message);
       }
@@ -247,12 +265,16 @@ export function createPoller({
     }
   }
 
-  async function pollVpn(networks, activeClients) {
+  async function pollVpn(networks, activeClients, connections = [], users = new Map()) {
     const summary = [];
+    getSnapshot().vpnClients = {};
     for (const network of networks) {
       const id = String(network._id);
       const enabled = network.enabled !== false;
-      const clients = enabled ? vpnClientsOf(network, activeClients) : [];
+      const clients = enabled
+        ? vpnClientsOf(network, activeClients, connections, users.get(id) ?? [])
+        : [];
+      getSnapshot().vpnClients[id] = clients;
       await publisher.publish(gladys.externalId(`vpn:${id}:state`), enabled ? 1 : 0);
       await publisher.publish(gladys.externalId(`vpn:${id}:clients`), clients.length);
       const now = new Map(clients.map((client) => [vpnClientKey(client), client]));

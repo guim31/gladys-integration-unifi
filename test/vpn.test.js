@@ -182,3 +182,60 @@ test('diagnostic: shapes and keys only, never a value', async () => {
     assert.ok(!report.includes(secret), secret);
   }
 });
+
+test('UDR7 of t/10426/62: clients from stat/remoteuservpn, named after the peers', async () => {
+  const NANTES = {
+    ...VPN,
+    _id: 'srv-nantes',
+    name: 'WireGuard Nantes',
+    ip_subnet: '192.168.5.1/24',
+  };
+  const LIEGE = { ...VPN, _id: 'srv-liege', name: 'WireGuard Liege', ip_subnet: '192.168.6.1/24' };
+  const connection = {
+    id: 'c1',
+    network_id: 'srv-nantes',
+    user: 'peer-ux',
+    peer_id: 'peer-ux',
+    tunnel_ip: '192.168.5.2',
+    rx_bytes: 5_000_000,
+    tx_bytes: 40_000_000,
+    up: true,
+    vpn_type: 'wireguard-server',
+  };
+  const w = setup();
+  w.unifi.networks = [NANTES, LIEGE];
+  w.gladys.devices = [NANTES, LIEGE].map((n) => vpnServerBlueprint.buildDevice(w.gladys, n));
+  w.unifi.active = [PHONE];
+  w.unifi.getVpnConnections = async () => [];
+  w.unifi.getWireguardUsers = async (id) =>
+    id === 'srv-nantes'
+      ? [{ _id: 'peer-ux', name: 'UX Nantes', network_id: 'srv-nantes' }]
+      : [{ _id: 'peer-udr', name: 'UDR Liège', network_id: 'srv-liege' }];
+  await w.poller.pollAllStates();
+  w.unifi.getVpnConnections = async () => [connection];
+  await w.poller.pollAllStates();
+  const nantes = w.gladys.externalIds('vpn', 'srv-nantes');
+  const liege = w.gladys.externalIds('vpn', 'srv-liege');
+  assert.equal(last(w.gladys, nantes.feature('clients')), 1);
+  assert.equal(last(w.gladys, liege.feature('clients')), 0);
+  assert.deepEqual(w.gladys.sceneEvents, [
+    {
+      key: TRIGGERS.VPN_CONNECTED,
+      data: { vpn_device: nantes.device, vpn: 'WireGuard Nantes', client: 'UX Nantes' },
+    },
+  ]);
+  const content = buildVpnContent({
+    snapshot: w.snapshot,
+    externalIds: (type, id) => w.gladys.externalIds(type, id),
+    settings: { network: nantes.device },
+  });
+  const rows = content.components.find((c) => c.type === 'status').items;
+  assert.equal(rows[1].value, 1);
+  assert.equal(rows[2].label, 'UX Nantes');
+  assert.equal(rows[2].value.fr, '↓ 40 Mo · ↑ 5 Mo');
+  // Gone: one event, the count back to 0.
+  w.unifi.getVpnConnections = async () => [{ ...connection, up: false }];
+  await w.poller.pollAllStates();
+  assert.equal(last(w.gladys, nantes.feature('clients')), 0);
+  assert.equal(w.gladys.sceneEvents.at(-1).key, TRIGGERS.VPN_DISCONNECTED);
+});

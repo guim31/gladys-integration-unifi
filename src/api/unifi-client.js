@@ -267,6 +267,22 @@ export class UniFiClient {
   }
 
   /**
+   * The active remote-user VPN connections of the gateway (every server):
+   * `network_id` (the server), `user` / `peer_id`, `tunnel_ip`, `rx_bytes`,
+   * `tx_bytes`, `uptime`, `up` (forum t/10426/62, a UDR7).
+   */
+  async getVpnConnections() {
+    const res = await this.request('GET', '/api/s/{site}/stat/remoteuservpn');
+    return Array.isArray(res) ? res : res?.data || [];
+  }
+
+  /** The peers declared on a WireGuard server: `_id`, `name`, `network_id`. */
+  async getWireguardUsers(networkId) {
+    const res = await this.request('GET', `/v2/api/site/{site}/wireguard/${networkId}/users`);
+    return Array.isArray(res) ? res : res?.data || [];
+  }
+
+  /**
    * Enable/Disable a network (the WireGuard server). Only `enabled` is sent,
    * as for the WLANs: sending the whole object back could write a masked
    * private key over the real one and break every peer. A console that
