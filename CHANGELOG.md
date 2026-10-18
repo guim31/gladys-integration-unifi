@@ -7,6 +7,8 @@ All notable changes to this integration are documented here. The format follows
 
 ### Fixed
 
+- WireGuard VPN widget: a client's traffic switches to GB above 1000 MB and to
+  TB above 1000 GB (t/10426/64).
 - WireGuard VPN: the connected clients are now read from the active VPN
   connections of the console and named after the server's peers. A UDR7
   whose clients are two remote UniFi gateways showed 0 connected client.
