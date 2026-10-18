@@ -147,3 +147,38 @@ test('a VPN peer without MAC does not stop the poll, and still counts', async ()
   await w.poller.pollAllStates();
   assert.equal(last(w.gladys, ids(w.gladys).feature('clients')), 1);
 });
+
+test('widget: a setting that is not a VPN server says so, not another server', () => {
+  const gladys = createFakeGladys();
+  const externalIds = (type, id) => gladys.externalIds(type, id);
+  const snapshot = { ...emptySnapshot(), polled: true, vpns: [VPN], clients: [] };
+  const content = buildVpnContent({
+    snapshot,
+    externalIds,
+    settings: { network: gladys.externalIds('gateway', 'aa:bb').device },
+  });
+  assert.match(content.components[0].text.fr, /n'est pas un serveur VPN/);
+  assert.equal(content.components.length, 1);
+});
+
+test('diagnostic: shapes and keys only, never a value', async () => {
+  const { vpnDiagnostic, shapeOf } = await import('../src/vpnDiagnostic.js');
+  assert.equal(shapeOf({ data: [{ b: 1, a: 'secret' }] }), '1 item(s): a, b');
+  const report = await vpnDiagnostic({
+    getNetworks: async () => [VPN, LAN],
+    getClients: async () => [PHONE, LAPTOP],
+    request: async (method, path) => {
+      if (path.includes('remoteuservpn')) {
+        return { data: [{ peer_name: 'Nantes', remote_ip: '203.0.113.9' }] };
+      }
+      throw Object.assign(new Error('nope'), { response: { status: 404 } });
+    },
+  });
+  assert.match(report, /WireGuard servers: 1; active clients \(stat\/sta\): 2/);
+  assert.match(report, /in subnet: 1, same network_id: 0/);
+  assert.match(report, /stat\/remoteuservpn: 1 item\(s\): peer_name, remote_ip/);
+  assert.match(report, /wireguard\/<id>\/users: HTTP 404/);
+  for (const secret of ['never-shown', '203.0.113.9', '192.168.3.2', 'Laptop', VPN._id]) {
+    assert.ok(!report.includes(secret), secret);
+  }
+});

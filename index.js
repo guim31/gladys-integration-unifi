@@ -15,6 +15,7 @@ import { legacyPoeSwitchBlueprint } from './src/devices/poePort.js';
 import { createStatePublisher } from './src/statePublisher.js';
 import { createPoller, POLL_INTERVAL_MS } from './src/poller.js';
 import { MESSAGES, VPN_READ_ONLY } from './src/messages.js';
+import { vpnDiagnostic } from './src/vpnDiagnostic.js';
 import {
   WIDGET,
   buildNetworkContent,
@@ -340,6 +341,14 @@ gladys.onWidgetGet(WIDGET.VPN, async ({ settings }) => {
 });
 
 // --- Manifest Action (Test Connection) ---------------------------------------
+gladys.onAction('vpn_diagnostic', async () => {
+  if (!unifiClient) {
+    throw new Error('UniFi client is not connected.');
+  }
+  logger.info('[UniFi Action] VPN diagnostic');
+  return await vpnDiagnostic(unifiClient);
+});
+
 gladys.onAction('test_connection', async () => {
   return await handleTestConnectionAction(gladys, unifiClient);
 });

@@ -154,6 +154,12 @@ Object.assign(WIDGET_TEXTS, {
     es: 'Todavía no hay ningún servidor WireGuard en la puerta de enlace. Créelo en UniFi Network (Ajustes → VPN → Servidor VPN) y añádalo desde la pestaña «Descubrir».',
   },
   megabytes: { en: 'MB', fr: 'Mo', de: 'MB', es: 'MB' },
+  notAVpn: {
+    en: 'The device chosen in the settings is not a VPN server: pick one of the "VPN WireGuard" devices.',
+    fr: "L'appareil choisi dans les réglages n'est pas un serveur VPN : choisissez un des appareils « VPN WireGuard ».",
+    de: 'Das in den Einstellungen gewählte Gerät ist kein VPN-Server: Wähle eines der Geräte „VPN WireGuard“.',
+    es: 'El dispositivo elegido en los ajustes no es un servidor VPN: elija uno de los dispositivos «VPN WireGuard».',
+  },
 });
 const T = WIDGET_TEXTS;
 
@@ -541,15 +547,14 @@ export function buildWifiContent({ snapshot, settings = {}, externalIds }) {
 
 /**
  * Pick the WireGuard server a vpn widget shows: the one chosen in the
- * settings (a device external_id) when known, else the first one.
+ * settings (a device external_id), the first one when none is chosen, and
+ * `undefined` when the choice is another device (the gateway, forum
+ * t/10426/60): the widget says so rather than showing another server.
  */
 export function pickVpn(snapshot, chosen, externalIds) {
   const vpns = snapshot.vpns ?? [];
   if (chosen) {
-    const match = vpns.find((vpn) => externalIds('vpn', String(vpn._id)).device === chosen);
-    if (match) {
-      return match;
-    }
+    return vpns.find((vpn) => externalIds('vpn', String(vpn._id)).device === chosen);
   }
   return vpns[0] ?? null;
 }
@@ -575,6 +580,9 @@ function trafficOf(client) {
  */
 export function buildVpnContent({ snapshot, settings = {}, externalIds, allowControl = false }) {
   const vpn = pickVpn(snapshot, settings.network, externalIds);
+  if (vpn === undefined && snapshot.vpns?.length) {
+    return { ttl_seconds: 30, components: [{ type: 'text', variant: 'body', text: T.notAVpn }] };
+  }
   if (!vpn) {
     return {
       ttl_seconds: 30,
