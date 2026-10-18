@@ -154,6 +154,8 @@ Object.assign(WIDGET_TEXTS, {
     es: 'Todavía no hay ningún servidor WireGuard en la puerta de enlace. Créelo en UniFi Network (Ajustes → VPN → Servidor VPN) y añádalo desde la pestaña «Descubrir».',
   },
   megabytes: { en: 'MB', fr: 'Mo', de: 'MB', es: 'MB' },
+  gigabytes: { en: 'GB', fr: 'Go', de: 'GB', es: 'GB' },
+  terabytes: { en: 'TB', fr: 'To', de: 'TB', es: 'TB' },
   notAVpn: {
     en: 'The device chosen in the settings is not a VPN server: pick one of the "VPN WireGuard" devices.',
     fr: "L'appareil choisi dans les réglages n'est pas un serveur VPN : choisissez un des appareils « VPN WireGuard ».",
@@ -567,17 +569,30 @@ export function pickVpn(snapshot, chosen, externalIds) {
   return vpns[0] ?? null;
 }
 
-/** "↓ 12 MB · ↑ 3 MB" of a client (bytes the client received / sent), null without counters. */
+/** "1.2 GB" in a language: MB up to 999, then GB, then TB (t/10426/64). */
+function formatBytes(bytes, language) {
+  let value = Number(bytes) / 1e6;
+  let unit = T.megabytes;
+  for (const next of [T.gigabytes, T.terabytes]) {
+    if (Math.round(value) < 1000) break;
+    value /= 1000;
+    unit = next;
+  }
+  const digits = unit === T.megabytes || value >= 10 ? 0 : 1;
+  const text = (Math.round(value * 10 ** digits) / 10 ** digits).toFixed(digits);
+  return `${language === 'en' ? text : text.replace('.', ',')} ${unit[language]}`;
+}
+
+/** "↓ 12 MB · ↑ 3 MB" of a client (bytes the client received / sent since it connected), null without counters. */
 function trafficOf(client) {
-  const toMb = (bytes) => Math.round(Number(bytes) / 1e6);
   // On the console's side: tx = sent to the client, rx = received from it.
   if (!Number.isFinite(Number(client.tx_bytes)) || !Number.isFinite(Number(client.rx_bytes))) {
     return null;
   }
   return Object.fromEntries(
-    Object.entries(T.megabytes).map(([language, unit]) => [
+    Object.keys(T.megabytes).map((language) => [
       language,
-      `↓ ${toMb(client.tx_bytes)} ${unit} · ↑ ${toMb(client.rx_bytes)} ${unit}`,
+      `↓ ${formatBytes(client.tx_bytes, language)} · ↑ ${formatBytes(client.rx_bytes, language)}`,
     ]),
   );
 }

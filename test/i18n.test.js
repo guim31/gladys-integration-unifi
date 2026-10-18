@@ -146,6 +146,8 @@ const WIDGET_TEXT_BOUNDS = {
   vpnClient: STATUS,
   vpnOnline: STATUS,
   megabytes: STATUS,
+  gigabytes: STATUS,
+  terabytes: STATUS,
   noVpn: BODY,
   notAVpn: BODY,
 };

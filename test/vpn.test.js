@@ -239,3 +239,20 @@ test('UDR7 of t/10426/62: clients from stat/remoteuservpn, named after the peers
   assert.equal(last(w.gladys, nantes.feature('clients')), 0);
   assert.equal(w.gladys.sceneEvents.at(-1).key, TRIGGERS.VPN_DISCONNECTED);
 });
+
+test('widget: traffic in MB, then GB, then TB (t/10426/64)', () => {
+  const gladys = createFakeGladys();
+  const externalIds = (type, id) => gladys.externalIds(type, id);
+  const big = { ...LAPTOP, tx_bytes: 1_234_000_000, rx_bytes: 2_500_000_000_000 };
+  const snapshot = { ...emptySnapshot(), polled: true, vpns: [VPN], clients: [big] };
+  const content = buildVpnContent({ snapshot, externalIds });
+  const status = content.components.find((c) => c.type === 'status');
+  const row = status.items.find((item) => item.label === 'Laptop');
+  assert.equal(row.value.fr, '↓ 1,2 Go · ↑ 2,5 To');
+  assert.equal(row.value.en, '↓ 1.2 GB · ↑ 2.5 TB');
+  const mid = { ...LAPTOP, tx_bytes: 999_000_000, rx_bytes: 45_600_000_000 };
+  const row2 = buildVpnContent({ snapshot: { ...snapshot, clients: [mid] }, externalIds })
+    .components.find((c) => c.type === 'status')
+    .items.find((item) => item.label === 'Laptop');
+  assert.equal(row2.value.fr, '↓ 999 Mo · ↑ 46 Go');
+});
