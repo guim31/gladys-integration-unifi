@@ -318,6 +318,22 @@
         "es": "Probar la conexión a UniFi"
       },
       "timeout_seconds": 30
+    },
+    {
+      "key": "vpn_diagnostic",
+      "label": {
+        "en": "VPN diagnostic",
+        "fr": "Diagnostic VPN",
+        "de": "VPN-Diagnose",
+        "es": "Diagnóstico VPN"
+      },
+      "description": {
+        "en": "Where this console lists the clients of its WireGuard servers: field names, counts and HTTP codes only, never an address or a key. To paste on the forum if the connected clients stay at 0.",
+        "fr": "Où cette console liste les clients de ses serveurs WireGuard : noms de champs, nombres et codes HTTP seulement, jamais une adresse ni une clé. À coller sur le forum si les clients connectés restent à 0.",
+        "de": "Wo diese Konsole die Clients ihrer WireGuard-Server auflistet: nur Feldnamen, Anzahlen und HTTP-Codes, nie eine Adresse oder ein Schlüssel. Zum Einfügen im Forum, wenn die verbundenen Clients bei 0 bleiben.",
+        "es": "Dónde lista esta consola los clientes de sus servidores WireGuard: solo nombres de campos, cantidades y códigos HTTP, nunca una dirección ni una clave. Para pegar en el foro si los clientes conectados se quedan en 0."
+      },
+      "timeout_seconds": 60
     }
   ],
   "widgets": [

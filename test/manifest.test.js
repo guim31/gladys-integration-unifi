@@ -20,7 +20,7 @@ const manifest = JSON.parse(
 );
 
 // Actions registered outside the blueprints (see index.js).
-const REGISTRY_LEVEL_ACTIONS = ['test_connection'];
+const REGISTRY_LEVEL_ACTIONS = ['test_connection', 'vpn_diagnostic'];
 
 test('every manifest action has a registered handler', () => {
   const handled = new Set([

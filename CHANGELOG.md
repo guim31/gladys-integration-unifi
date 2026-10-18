@@ -7,6 +7,17 @@ All notable changes to this integration are documented here. The format follows
 
 ### Added
 
+- "VPN diagnostic" action: where the console lists the clients of its
+  WireGuard servers (field names, counts and HTTP codes only), to find the
+  connected clients that the 1.8.0 does not see yet.
+
+### Fixed
+
+- The WireGuard VPN widget showed another server when the device chosen in
+  its settings was not a VPN server (the gateway): it now says so.
+
+### Added
+
 - WireGuard VPN server of the gateway (UCG, UDM…): a device with its state and
   the number of connected clients, a "WireGuard VPN" widget listing the
   connected clients, and the "VPN client connected" / "VPN client

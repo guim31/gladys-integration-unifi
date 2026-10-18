@@ -58,7 +58,8 @@ Depuis Gladys 5.1, l'intégration propose quatre widgets dans l'éditeur de tabl
   - Limites : les boutons passent par la fonctionnalité « État Wi-Fi » du SSID, qui doit donc être **ajouté à Gladys** depuis la Découverte. Le nombre de clients compte les clients Wi-Fi dont le SSID est celui-ci au dernier relevé.
 
 - **VPN WireGuard** : le serveur WireGuard de la passerelle : son état, le nombre de clients connectés, et une ligne par client (son nom et les données échangées, ↓ reçu · ↑ envoyé, quand la console les donne). Les boutons **Activer** / **Désactiver** n'apparaissent que si **Autoriser la commande du serveur VPN** est coché dans la configuration (un accès à distance coupé par erreur se rétablit mal).
-  - Réglage : **Serveur VPN** (le serveur ajouté à Gladys ; vide = le premier connu).
+  - Réglage : **Serveur VPN** (un appareil « VPN WireGuard » ; vide = le premier connu). Si l'appareil choisi n'est pas un serveur VPN (la passerelle, par exemple), le widget le dit.
+  - Les **clients connectés** sont les clients WireGuard du serveur : téléphones, ordinateurs, ou une autre passerelle UniFi connectée en client WireGuard. Si le nombre reste à 0 alors qu'un client est connecté, lancez l'action **Diagnostic VPN** et collez son résultat sur le forum : il ne contient que des noms de champs, des nombres et des codes HTTP.
   - Limites : un client VPN est reconnu à son adresse dans le sous-réseau du VPN, dans la liste des clients de la console (comme dans la page Appareils clients). Développé sans passerelle WireGuard sous la main : vos retours sont les bienvenus.
 
 ## Déclencheurs de scène

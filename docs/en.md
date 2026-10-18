@@ -49,7 +49,8 @@ Since Gladys 5.1, the integration offers four widgets in the dashboard editor. T
   - Setting: **Wi-Fi network** (the SSID added to Gladys; empty = the first known SSID).
   - Limits: the buttons go through the SSID's "Wi-Fi state" feature, so the SSID must be **added to Gladys** from the Discovery tab. The client count is the Wi-Fi clients whose SSID is this one at the last poll.
 - **WireGuard VPN**: the gateway's WireGuard server: its state, the number of connected clients, and one row per client (its name and the data exchanged, ↓ received · ↑ sent, when the console gives them). The **Enable** / **Disable** buttons only show when **Allow the VPN server control** is ticked in the configuration (a remote access cut by mistake is hard to restore).
-  - Setting: **VPN server** (the server added to Gladys; empty = the first known one).
+  - Setting: **VPN server** (a "VPN WireGuard" device; empty = the first known one). If the device chosen is not a VPN server (the gateway, for example), the widget says so.
+  - The **connected clients** are the WireGuard clients of the server: phones, computers, or another UniFi gateway connected as a WireGuard client. If the count stays at 0 while a client is connected, run the **VPN diagnostic** action and paste its result on the forum: it only holds field names, counts and HTTP codes.
   - Limits: a VPN client is recognized by its address in the VPN subnet, among the clients of the console (as in the Client Devices page). Developed without a WireGuard gateway at hand: feedback welcome.
 
 ## Scene triggers
