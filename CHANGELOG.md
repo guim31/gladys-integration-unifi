@@ -7,6 +7,8 @@ All notable changes to this integration are documented here. The format follows
 
 ### Fixed
 
+- Presence: an offline delay of 0 now marks a client absent at once; it was
+  taken as the 120 s default (t/10426/68).
 - WireGuard VPN widget: a client's traffic switches to GB above 1000 MB and to
   TB above 1000 GB (t/10426/64).
 - WireGuard VPN: the connected clients are now read from the active VPN

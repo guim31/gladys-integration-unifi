@@ -41,8 +41,11 @@ export function normalizeConfig(raw = {}) {
     unifi_username: String(raw.unifi_username ?? DEFAULT_CONFIG.unifi_username).trim(),
     unifi_password: String(raw.unifi_password ?? DEFAULT_CONFIG.unifi_password),
     unifi_site_id: String(raw.unifi_site_id ?? DEFAULT_CONFIG.unifi_site_id).trim() || 'default',
+    // An emptied field arrives as '' (Number('') would be 0, "absent at once").
     presence_offline_delay: Number(
-      raw.presence_offline_delay ?? DEFAULT_CONFIG.presence_offline_delay,
+      raw.presence_offline_delay === '' || raw.presence_offline_delay === null
+        ? DEFAULT_CONFIG.presence_offline_delay
+        : (raw.presence_offline_delay ?? DEFAULT_CONFIG.presence_offline_delay),
     ),
     discover_infrastructure: raw.discover_infrastructure !== false,
     discover_clients: raw.discover_clients !== false,
