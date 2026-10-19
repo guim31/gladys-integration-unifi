@@ -78,7 +78,9 @@ export function createPoller({
     if (presenceTimers.has(mac)) {
       clearTimeout(presenceTimers.get(mac));
     }
-    const delayMs = (getConfig().presence_offline_delay || 120) * 1000;
+    // 0 is a valid choice (absent at once), not "unset" (t/10426/68).
+    const delay = Number(getConfig().presence_offline_delay);
+    const delayMs = (Number.isFinite(delay) && delay >= 0 ? delay : 120) * 1000;
     const timer = setTimeout(async () => {
       logger.debug(`Presence offline delay elapsed for ${mac}. Setting presence to 0.`);
       setPresence(mac, 0);

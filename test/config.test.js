@@ -46,3 +46,9 @@ test('normalizeConfig coerces numeric strings coming from a form', () => {
   assert.equal(config.presence_offline_delay, 180);
   assert.equal(typeof config.presence_offline_delay, 'number');
 });
+
+test('presence offline delay: 0 is kept, an emptied field falls back to the default', () => {
+  assert.equal(normalizeConfig({ presence_offline_delay: 0 }).presence_offline_delay, 0);
+  assert.equal(normalizeConfig({ presence_offline_delay: '' }).presence_offline_delay, 120);
+  assert.equal(normalizeConfig({ presence_offline_delay: null }).presence_offline_delay, 120);
+});

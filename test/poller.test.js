@@ -16,7 +16,7 @@ import { createFakeGladys } from './helpers/fakeGladys.js';
 const client = { mac: '02:00:00:00:00:01', name: 'Phone' };
 const gatewayHw = { mac: '02:00:00:00:01:00', name: 'Gateway', type: 'ucg', state: 1 };
 
-function setup() {
+function setup({ delay = 1 } = {}) {
   const gladys = createFakeGladys();
   const publisher = createStatePublisher(gladys);
   const unifi = {
@@ -42,7 +42,7 @@ function setup() {
     gladys,
     publisher,
     getUnifiClient: () => unifi,
-    getConfig: () => ({ presence_offline_delay: 1 }),
+    getConfig: () => ({ presence_offline_delay: delay }),
     getSnapshot: () => snapshot,
   });
   gladys.devices = [
@@ -186,6 +186,19 @@ test('the WebSocket events still drive the presence', async (t) => {
   await poller.handleEvent({ key: 'EVT_AP_Restarted', user: client.mac });
   await poller.handleEvent({ key: 'EVT_WU_Connected' });
   await poller.handleEvent(null);
+  assert.equal(last().state, 0);
+  poller.clearTimers();
+});
+
+test('an offline delay of 0 means absent at once, not the 120 s default (t/10426/68)', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { gladys, poller } = setup({ delay: 0 });
+  const presence = gladys.externalId(`client:${client.mac}:presence`);
+  const last = () => gladys.published.filter((p) => p.featureExternalId === presence).at(-1);
+  await poller.handleEvent({ key: 'EVT_WU_Connected', user: client.mac });
+  await poller.handleEvent({ key: 'EVT_WU_Disconnected', user: client.mac });
+  t.mock.timers.tick(0);
+  await settle();
   assert.equal(last().state, 0);
   poller.clearTimers();
 });
