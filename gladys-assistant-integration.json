@@ -173,6 +173,24 @@
       "max": 3600
     },
     {
+      "key": "presence_heartbeat",
+      "type": "boolean",
+      "label": {
+        "en": "Republish presence every minute",
+        "fr": "Republier la présence chaque minute",
+        "de": "Anwesenheit jede Minute erneut senden",
+        "es": "Reenviar la presencia cada minuto"
+      },
+      "description": {
+        "en": "Needed by the \"Check user presence\" scene action. Turn it off to keep the activity feed clean: only changes are sent.",
+        "fr": "Nécessaire à l'action de scène « Vérifier la présence ». Désactivez-le pour garder le fil d'activité propre : seuls les changements sont envoyés.",
+        "de": "Nötig für die Szenenaktion „Anwesenheit von Benutzern überprüfen“. Schalte es aus, um den Aktivitätsverlauf sauber zu halten: Nur Änderungen werden gesendet.",
+        "es": "Necesario para la acción de escena «Comprobar presencia del usuario». Desactívelo para mantener limpio el registro de actividad: solo se envían los cambios."
+      },
+      "required": false,
+      "default": true
+    },
+    {
       "key": "filtering_section",
       "type": "section",
       "label": {

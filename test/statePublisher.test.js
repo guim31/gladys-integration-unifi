@@ -20,10 +20,10 @@ const clients = Array.from({ length: 30 }, (_, i) => ({
 }));
 const gatewayHw = { mac: '02:00:00:00:01:00', name: 'Gateway', type: 'ucg', state: 1 };
 
-function setup({ active = clients, rates = { rx: 125000, tx: 25000 } } = {}) {
+function setup({ active = clients, rates = { rx: 125000, tx: 25000 }, config = {} } = {}) {
   const gladys = createFakeGladys();
   let now = 1_000_000;
-  const publisher = createStatePublisher(gladys, { now: () => now });
+  const publisher = createStatePublisher(gladys, { now: () => now, getConfig: () => config });
   const unifi = {
     active,
     rates,
@@ -108,6 +108,35 @@ test('an unchanged cycle publishes nothing; "present" again after a minute', asy
   assert.deepEqual((await cycle()).map((p) => p.featureExternalId).sort(), [
     gladys.externalId(`client:${mac(1)}:presence`),
     gladys.externalId(`client:${mac(2)}:presence`),
+  ]);
+});
+
+test('presence heartbeat on: "present" is republished every minute', async () => {
+  const { gladys, cycle, tick } = setup({ config: { presence_heartbeat: true } });
+  await cycle();
+
+  for (let minute = 0; minute < 3; minute += 1) {
+    tick(PRESENCE_HEARTBEAT_MS);
+    assert.deepEqual((await cycle()).map((p) => p.featureExternalId).sort(), [
+      gladys.externalId(`client:${mac(1)}:presence`),
+      gladys.externalId(`client:${mac(2)}:presence`),
+    ]);
+  }
+});
+
+test('presence heartbeat off: only the changes of presence are published', async () => {
+  const { gladys, unifi, cycle, tick } = setup({ config: { presence_heartbeat: false } });
+  await cycle();
+
+  tick(PRESENCE_HEARTBEAT_MS);
+  assert.deepEqual(await cycle(), []);
+  tick(10 * PRESENCE_HEARTBEAT_MS);
+  assert.deepEqual(await cycle(), []);
+
+  // A change is still published.
+  unifi.active = clients.slice(1);
+  assert.deepEqual(await cycle(), [
+    { featureExternalId: gladys.externalId(`client:${mac(1)}:presence`), state: 0 },
   ]);
 });
 

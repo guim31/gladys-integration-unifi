@@ -47,6 +47,13 @@ test('normalizeConfig coerces numeric strings coming from a form', () => {
   assert.equal(typeof config.presence_offline_delay, 'number');
 });
 
+test('presence heartbeat: on by default, off only when unticked', () => {
+  assert.equal(normalizeConfig().presence_heartbeat, true);
+  assert.equal(normalizeConfig({ presence_heartbeat: true }).presence_heartbeat, true);
+  assert.equal(normalizeConfig({ presence_heartbeat: false }).presence_heartbeat, false);
+  assert.equal(normalizeConfig({ presence_heartbeat: 'false' }).presence_heartbeat, false);
+});
+
 test('presence offline delay: 0 is kept, an emptied field falls back to the default', () => {
   assert.equal(normalizeConfig({ presence_offline_delay: 0 }).presence_offline_delay, 0);
   assert.equal(normalizeConfig({ presence_offline_delay: '' }).presence_offline_delay, 120);

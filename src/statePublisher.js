@@ -10,6 +10,8 @@
 // "Check presence" scene action reads `last_value_changed`, which the core
 // refreshes on every state, so "present" is published again at most once a
 // minute (the lan-manager service of the core republishes it on every scan).
+// Each of these states is kept in the history and shown in the activity feed
+// of the core: `presence_heartbeat: false` turns the heartbeat off.
 // -----------------------------------------------------------------------------
 
 import { DEVICE_FEATURE_CATEGORIES, logger } from '@gladysassistant/integration-sdk';
@@ -23,8 +25,10 @@ export const PRESENCE_HEARTBEAT_MS = 60 * 1000;
  *   events).
  * @param {object} [options]
  * @param {() => number} [options.now]
+ * @param {() => object} [options.getConfig] the current configuration; its
+ *   `presence_heartbeat` (true unless false) republishes "present" every minute
  */
-export function createStatePublisher(gladys, { now = Date.now } = {}) {
+export function createStatePublisher(gladys, { now = Date.now, getConfig = () => ({}) } = {}) {
   /** @type {Map<string, { value: unknown, at: number }>} last published state, by feature */
   const last = new Map();
   let source = null;
@@ -68,6 +72,7 @@ export function createStatePublisher(gladys, { now = Date.now } = {}) {
       const at = now();
       if (!force && previous && previous.value === value) {
         const heartbeat =
+          getConfig()?.presence_heartbeat !== false &&
           feature?.category === DEVICE_FEATURE_CATEGORIES.PRESENCE_SENSOR &&
           value === 1 &&
           at - previous.at >= PRESENCE_HEARTBEAT_MS;
