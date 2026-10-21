@@ -42,6 +42,7 @@ L'intégration prend en charge 2 modes au choix :
 1. Une fois la configuration enregistrée dans Gladys, cliquez sur le bouton **Tester la connexion UniFi** pour valider la communication.
 2. Allez dans l'onglet **Découverte** de Gladys pour ajouter votre Gateway, vos clients réseau (smartphones), vos ports PoE et vos réseaux Wi-Fi.
 3. Si vous aviez ajouté l'appareil « Switch PoE : … » de la version 1.5.2, il garde les ports PoE de son équipement (mêmes fonctionnalités, historique et tableaux de bord conservés) et l'équipement lui-même se met à jour sans eux. Supprimez cet appareil si vous préférez les ports sur l'équipement : ils y reviennent à la découverte suivante, avec un nouvel historique.
+4. **Republier la présence chaque minute** (activé par défaut) : un client à la maison est renvoyé à Gladys comme « présent » chaque minute, ce dont l'action de scène **Vérifier la présence** a besoin (elle lit quand l'appareil a été vu pour la dernière fois). Chacun de ces états est gardé dans l'historique et affiché dans le fil d'activité : désactivez l'option pour garder le fil propre si vous n'utilisez pas cette action ; seuls les changements sont alors envoyés.
 
 ## Widgets du tableau de bord
 

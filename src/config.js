@@ -11,6 +11,7 @@ export const DEFAULT_CONFIG = {
   unifi_password: '',
   unifi_site_id: 'default',
   presence_offline_delay: 120, // seconds
+  presence_heartbeat: true, // republish "present" every minute (Check presence)
   discover_infrastructure: true,
   discover_clients: true,
   only_active_clients: true,
@@ -47,6 +48,7 @@ export function normalizeConfig(raw = {}) {
         ? DEFAULT_CONFIG.presence_offline_delay
         : (raw.presence_offline_delay ?? DEFAULT_CONFIG.presence_offline_delay),
     ),
+    presence_heartbeat: raw.presence_heartbeat !== false && raw.presence_heartbeat !== 'false',
     discover_infrastructure: raw.discover_infrastructure !== false,
     discover_clients: raw.discover_clients !== false,
     only_active_clients: raw.only_active_clients !== false,

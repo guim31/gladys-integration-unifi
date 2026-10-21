@@ -5,6 +5,13 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- "Republish presence every minute" option, on by default (unchanged
+  behaviour). The "Check user presence" scene action needs it; turned off,
+  only the changes of presence are sent, which keeps the history and the
+  activity feed of Gladys clean (t/10426/67).
+
 ### Fixed
 
 - Presence: an offline delay of 0 now marks a client absent at once; it was

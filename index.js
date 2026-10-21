@@ -70,7 +70,7 @@ function nudgeWidget(key) {
 
 // Every state goes through the publisher: only the features of devices
 // created in Gladys, only the changes (see src/statePublisher.js).
-const publisher = createStatePublisher(gladys);
+const publisher = createStatePublisher(gladys, { getConfig: () => config });
 const poller = createPoller({
   gladys,
   publisher,
