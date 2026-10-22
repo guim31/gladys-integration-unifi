@@ -5,6 +5,12 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Rebuilt on Node.js 24.22.1, the October 2026 security release (remote code
+  execution in the Brotli decoder, CVE-2026-111497; TLS hostname and DNS
+  fixes).
+
 ### Added
 
 - "Republish presence every minute" option, on by default (unchanged
